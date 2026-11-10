@@ -3,6 +3,16 @@
 Albion Online **Europe** sunucusu için canlı pazar analiz paneli ve tam pazar tarayıcı — albionanalyser.com tarzı.
 Veri kaynağı: **Albion Online Data Project (AODP)** ücretsiz açık API'si.
 
+## Çevrimiçi site (kalıcı URL) 🌐
+
+- **https://barisdralabeen-glitch.github.io/albion-dashboard/** — GitHub Pages'ta barındırılır, kurulumda arkadaşlara bunu gönder.
+- Güncelleme: site değişince tek komut —
+  ```powershell
+  powershell -ExecutionPolicy Bypass -File deploy.ps1
+  ```
+  Bu betik `index.html / app.js / scanner.js / styles.css / README.md` dosyalarını `deploy/` klasörüne kopyalar, commit edip GitHub'a push eder; arkadaşlarda sayfa açıldığında güncel sürüm görünür.
+- Not: `share.json`, `serve.ps1`, `watchdog.ps1` yüklenmez (bunlar yerel/tünel altyapısına aittir).
+
 ## Nasıl açılır?
 
 **Yöntem 1 (en kolay):** `index.html` dosyasını çift tıkla. Tarayıcıda açılır, veriler otomatik yüklenir. ✅
