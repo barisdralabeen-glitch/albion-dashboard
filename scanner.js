@@ -688,7 +688,7 @@ function renderScanTable() {
     <tr data-id="${esc(x.id)}" data-q="${Number(x.q) || 1}" data-fkey="${esc(fkeyOf(x))}" class="scan-row">
       <td><div class="item-cell">
         <img loading="lazy" alt="" class="item-icon" src="https://render.albiononline.com/v2/item/${esc(x.id)}.png?size=32" onerror="this.style.display='none'">
-        <span><span class="item-name copyname" data-copyname="${esc(shortName)}" title="Tıkla: ismi kopyala (oyuna yapıştır) · Shift+tık: item kodu kopyalar">${tp} ${esc(shortName)}</span> ${qtyChipHTML(qkey)}<br><span class="muted small">${subTier}${qLabel}</span></span>
+        <span><span class="item-name copyname" data-copyname="${esc(shortName)}" data-copyfull="${esc(tp + ' ' + shortName)}" title="Tıkla: ismi kopyala (oyuna yapıştır) · Shift+tık: item kodu kopyalar">${tp} ${esc(shortName)}</span> ${qtyChipHTML(qkey)}<br><span class="muted small">${subTier}${qLabel}</span></span>
       </div></td>
       <td class="kind-label" title="${esc(x.kind)}">${x.kind === "Emir → Emir" ? "Anlık (BO)" : "Satış emri"}</td>
       <td><span class="city-tag city-${esc(x.buyCity.replace(/\s/g, ""))}">${esc(x.buyCity)}</span></td>
@@ -906,12 +906,12 @@ async function scannerSetup() {
     if (!el) return;
     ev.stopPropagation();
     const tr = el.closest("tr");
-    copyToClipboard((ev.shiftKey && tr && tr.dataset.id) ? tr.dataset.id : el.dataset.copyname);
+    copyToClipboard((ev.shiftKey && tr && tr.dataset.id) ? tr.dataset.id : (el.dataset.copyfull || el.dataset.copyname));
   });
   $("orderBody")?.addEventListener("click", ev => {
     const el = ev.target.closest("[data-copyname]");
     if (!el) return;
-    copyToClipboard((ev.shiftKey && el.dataset.copyid) ? el.dataset.copyid : el.dataset.copyname);
+    copyToClipboard((ev.shiftKey && el.dataset.copyid) ? el.dataset.copyid : (el.dataset.copyfull || el.dataset.copyname));
   });
   buildColPanel();
   applyHiddenCols();
@@ -1671,11 +1671,13 @@ function renderBO(force) {
   body.innerHTML = rows.slice(0, 80).map(x => {
     const shortName = String(x.name || "").replace(/^T\d+\s*/, "");
     const mCls = x.pct >= 40 ? "margin-badge margin-high" : x.pct >= 15 ? "margin-badge margin-medium" : "margin-badge margin-low";
+    /* v24: kopyaya tier ekleniyor (ör. "6.3 Grandmaster's Cape") */
+    const tp = tierPretty(x.id);
     return `
     <tr class="scan-row">
       <td><div class="item-cell">
         <img loading="lazy" alt="" class="item-icon" src="https://render.albiononline.com/v2/item/${esc(x.id)}.png?size=32" onerror="this.style.display='none'">
-        <span><span class="item-name copyname" data-copyname="${esc(shortName)}" data-copyid="${esc(x.id)}" title="Tıkla: ismi kopyala · Shift+tık: item kodu">${esc(x.name)}</span></span>
+        <span><span class="item-name copyname" data-copyname="${esc(shortName)}" data-copyfull="${esc(tp + ' ' + shortName)}" data-copyid="${esc(x.id)}" title="Tıkla: ismi kopyala · Shift+tık: item kodu">${esc(x.name)}</span></span>
       </div></td>
       <td><span class="city-tag city-${esc(x.city.replace(/\s/g, ""))}">${esc(x.city)}</span></td>
       <td class="num price" title="Son 7 günde bu şehirde buy order'lara satılan adet">${fmt(x.qty)} <span class="muted small">· 7g</span></td>
