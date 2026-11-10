@@ -10,7 +10,7 @@ Veri kaynağı: **Albion Online Data Project (AODP)** ücretsiz açık API'si.
   ```powershell
   powershell -ExecutionPolicy Bypass -File deploy.ps1
   ```
-  Bu betik `index.html / app.js / scanner.js / styles.css / README.md` dosyalarını `deploy/` klasörüne kopyalar, commit edip GitHub'a push eder; arkadaşlarda sayfa açıldığında güncel sürüm görünür.
+  Bu betik `index.html / app.js / scanner.js / styles.css / README.md / data/scan-list.js` dosyalarını `deploy/` klasörüne kopyalar, commit edip GitHub'a push eder; arkadaşlarda sayfa açıldığında güncel sürüm görünür.
 - Not: `share.json`, `serve.ps1`, `watchdog.ps1` yüklenmez (bunlar yerel/tünel altyapısına aittir).
 
 ## Nasıl açılır?
