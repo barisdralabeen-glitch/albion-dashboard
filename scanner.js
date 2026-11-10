@@ -119,6 +119,21 @@ function loadCachedScan() {
 
 /* ---------- UI ---------- */
 /* albionanalyser'ın category-grid tarzında kategori listesi (checkbox + sayı) */
+/* tarama sürerken grup değişince tek seferde yeniden başlatma (hızlı tıklamalarda debounce) */
+let grpRestartT = null;
+function grpRestartScan() {
+  if (grpRestartT) clearTimeout(grpRestartT);
+  grpRestartT = setTimeout(() => {
+    grpRestartT = null;
+    if (scanState.running) stopScan();
+    const wait = setInterval(() => {
+      if (!scanState.running) {
+        clearInterval(wait);
+        if (typeof startScan === "function") startScan();
+      }
+    }, 250);
+  }, 700);
+}
 function renderChips() {
   const counts = {};
   scanState.list.forEach(x => counts[x.g] = (counts[x.g] || 0) + 1);
@@ -128,8 +143,12 @@ function renderChips() {
   }).join("");
   $("scanChips").querySelectorAll('input[type="checkbox"]').forEach(cb => {
     cb.addEventListener("change", () => {
-      if (scanState.running) { cb.checked = !cb.checked; return; }
       scanState.groups[cb.dataset.grp] = cb.checked;
+      if (scanState.running) {
+        /* v25: tarama sürerken de grup değiştirilebilir — tarama yeni seçimle yeniden başlar */
+        if ($("scanInfo")) $("scanInfo").textContent = "Gruplar değişti — tarama yeni seçimle yeniden başlıyor…";
+        grpRestartScan();
+      }
     });
   });
 }
