@@ -496,8 +496,15 @@ th:not(.num), td:not(.num) { text-align: left; }
   .left-nav { width: 64px; min-width: 64px; }
   .nav-item { width: 56px; }
 }
+/* v23: 780px altında sidebar gizlenmesin — .app tek kolona düşer, panel en üste akar */
 @media (max-width: 780px) {
-  .sidebar { display: none; }
+  .app { display: block; }
+  /* nav tek kolonda çok yer kaplamasın: yatay row'a çevir */
+  .left-nav { width: 100%; min-width: 0; max-height: none; flex-direction: row; flex-wrap: wrap; padding: 8px; border-right: none; border-bottom: 1px solid #30363d; }
+  .nav-item { flex: 1 1 64px; }
+  .sidebar { display: block; width: 100%; max-width: none; max-height: none; border-right: none; border-bottom: 1px solid #30363d; padding: 10px 12px; }
+  /* tek kolon akışında tablonun iç scroll kilidi kalkar, sayfa doğal kayar */
+  .content { max-height: none; min-height: 0; }
 }
 
 /* Black Market kolonu + BUY hücresi 7g işlem hacmi mini-gösterge */

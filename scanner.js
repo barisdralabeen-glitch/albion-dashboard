@@ -1005,6 +1005,20 @@ async function scannerSetup() {
     const btn = $("shareBtn");
     if (btn) { btn.dataset.share = s.url; btn.classList.remove("hidden"); }
   }).catch(() => { /* sunucu yoksa buton gizli kalir */ });
+  /* v23: İlk açılışta boş görünmesin — kayıtlı tarama sonucu yoksa 800 ms sonra otomatik tarama */
+  try {
+    setTimeout(() => {
+      try {
+        /* scannerInit'teki loadCachedScan kaydı yüklemediyse flips boş kalır;
+           localStorage'da da sonuç yoksa sayfa ilk açılışta tamamen boş demektir */
+        const cached = JSON.parse(localStorage.getItem("scanResult") || "null");
+        const hasCached = !!(cached && cached.flips && cached.flips.length);
+        if (!hasCached && !scanState.running && scanState.flips.length === 0 && typeof startScan === "function") {
+          try { startScan(); } catch (e) { /* yoksay */ }
+        }
+      } catch (e) { /* yoksay */ }
+    }, 800);
+  } catch (e) { /* yoksay */ }
   const lb = $("ledgerBody");
   if (lb) {
     lb.addEventListener("change", ev => {
