@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dr aLabeen — Albion Pazar Analiz</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="header">
+  <div class="brand">
+    <span class="brand-mark">◈</span>
+    <div>
+      <h1>Dr aLabeen</h1>
+      <span class="muted small">Pazar Analiz · veri: Albion Online Data Project</span>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="header-server-dropdown">
+      <label style="margin:0" for="serverSelect"><span class="muted small" style="display:block;margin-bottom:2px">Sunucu</span>
+        <select id="serverSelect">
+          <option value="europe">Europe</option>
+          <option value="west">US West</option>
+        </select>
+      </label>
+    </div>
+    <span id="dataStatus" class="status-badge muted">Hazır</span>
+    <button id="shareBtn" class="btn ghost hidden" type="button" onclick="shareCopy()" title="Arkadaşlarla paylaş — tıkla, site linkini kopyala, mesaj at: onlar senin güncellemelerini anında görür">🔗 Paylaş</button>
+    <span id="lastUpdated" class="muted small"></span>
+  </div>
+</header>
+
+<div class="app">
+
+  <nav class="left-nav">
+    <button class="nav-item active" type="button" data-tab="scanner">
+      <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h16M20 9l-4-4M20 9l-4 4"/><path d="M20 15H4M4 15l4 4M4 15l4-4"/></svg></span>
+      <span>Tarama</span>
+    </button>
+    <button class="nav-item" type="button" data-tab="detail">
+      <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg></span>
+      <span>Ürün Detayı</span>
+    </button>
+    <button class="nav-item" type="button" data-tab="calc">
+      <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 11h2M12 11h2M16 11h2M8 15h2M12 15h2M16 15h2M8 19h2M12 19h2M16 19h2"/></svg></span>
+      <span>Hesap</span>
+    </button>
+    <button class="nav-item" type="button" data-tab="ledger">
+      <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"/><path d="M8 9h8M8 13h8M8 17h5"/></svg></span>
+      <span>Defter</span>
+    </button>
+    <button class="nav-item" type="button" data-tab="order">
+      <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M6 12h12M10 18h4"/></svg></span>
+      <span>Emir</span>
+    </button>
+  </nav>
+
+  <!-- ================= SIDEBAR: TARAMA FİLTRELERİ ================= -->
+  <aside class="sidebar" id="sidebar-scanner">
+    <div class="panel">
+      <div class="panel-title">Pazar Ayarları</div>
+      <label>Ürün grupları <span class="muted small">(tarama kapsamı)</span></label>
+      <div id="scanChips" class="chips category-grid"></div>
+      <div class="control-row">
+        <label class="field">Min. tier
+          <select id="scanTierMin" class="narrow"></select></label>
+        <label class="field">Max. tier
+          <select id="scanTierMax" class="narrow"></select></label>
+      </div>
+      <label class="field">Kalite
+        <select id="scanQualityAll"></select></label>
+      <div class="row">
+        <label class="field">Buy in (Kaynak)
+          <select id="scanCity"></select></label>
+        <label class="field">Sell in (Hedef)
+          <select id="scanDest"></select></label>
+      </div>
+      <div class="row">
+        <label class="field">Min. net kâr
+          <input id="minNet" type="number" min="0" step="1000"></label>
+        <label class="field">Min. marjin %
+          <input id="minPct" type="number" min="0" step="1"></label>
+      </div>
+      <label class="field">Sıralama
+        <select id="scanSort"></select></label>
+      <label class="check"><input id="scanAll" type="checkbox" checked> Bütün itemleri göster (kâr eşiği kapansın)</label>
+      <label class="field" title="Albion vergisi: Premium ile %4, Premiumsuz %8 — hesaplarda hepsi buna göre">
+        Premium vergisi
+        <select id="taxMode">
+          <option value="4" selected>Premium — %4</option>
+          <option value="8">Premiumsuz — %8</option>
+        </select></label>
+      <label class="field" title="Seçtiğinden eski emirleri gizler">Taze emir filtresi
+        <select id="freshWindow">
+          <option value="0">Tüm emirler (süre yok)</option>
+          <option value="900">Son 15 dk</option>
+          <option value="3600">Son 1 sa</option>
+          <option value="10800">Son 3 sa</option>
+          <option value="21600" selected>Son 6 sa</option>
+          <option value="43200">Son 12 sa</option>
+          <option value="86400">Son 24 sa</option>
+        </select></label>
+      <label class="field" title="Tabloda ada veya item koduna göre süzgeç">Tabloda ara
+        <input id="scanSearch" type="text" placeholder="örn. bag, journal, T6.3…"></label>
+      <label class="check" title="Yalnızca yıldızladığın itemleri göster (F tuşu)"><input id="favOnly" type="checkbox"> Sadece favoriler <span class="muted small">(F tuşu)</span></label>
+      <label class="field" title="Filtre setlerini kaydet — tek tıkla geri yükle">Profil
+        <div class="control-row">
+          <select id="profSel" style="flex:1"></select>
+          <button id="profSave" class="btn ghost" type="button" title="Şu anki filtreleri profil olarak kaydet">💾</button>
+          <button id="profDel" class="btn ghost" type="button" title="Seçili profili sil">🗑</button>
+        </div></label>
+      <label class="check"><input id="autoScan" type="checkbox"> Otomatik tarama <span class="muted small">(yeni fırsatta bildirim + bip)</span></label>
+      <div class="control-row">
+        <label class="field">Her
+          <select id="autoEvery" class="narrow">
+            <option value="5">5 dk</option>
+            <option value="10">10 dk</option>
+            <option value="15" selected>15 dk</option>
+            <option value="30">30 dk</option>
+          </select></label>
+        <label class="field">Kolonlar
+          <button id="colBtn" class="btn ghost" type="button">Göster/gizle</button></label>
+      </div>
+      <div id="colPanel" class="col-panel hidden"></div>
+      <button id="scanBtn" class="btn primary" type="button" onclick="startScan()">🚀 Taramayı Başlat</button>
+      <button id="stopBtn" class="btn danger hidden" type="button" onclick="stopScan()" style="margin-top:8px">⏹ Durdur</button>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button id="csvBtn" class="btn ghost" type="button" onclick="exportCSV()">CSV</button>
+      </div>
+      <div class="prog hidden"><div class="prog-fill" id="scanBarFill"></div></div>
+      <div id="scanProgText" class="progress-text" style="display:none"></div>
+      <p class="muted small" id="scanInfo" style="margin-top:10px"></p>
+    </div>
+    <div class="panel" id="favPanel" style="margin-top:12px">
+      <div class="panel-title">⭐ Favoriler &amp; Alarm</div>
+      <div id="favList" class="muted small">Favori yok — tabloda ★'a bas. Alarm eşiğini yazarsan taramalarda fiyat aşılınca bip + bildirim gelir.</div>
+    </div>
+  </aside>
+
+  <!-- ================= SIDEBAR: DETAY KONTROLLERİ ================= -->
+  <aside class="sidebar hidden" id="sidebar-detail">
+    <div class="panel">
+      <div class="panel-title">Ürün Seçimi</div>
+      <label>Ürün
+        <div class="search-wrap">
+          <input id="search" type="text" placeholder="Ara: ore, deri, çanta, T6..." autocomplete="off">
+          <div id="searchResults" class="search-results hidden"></div>
+        </div>
+      </label>
+      <label class="field" style="margin-bottom:14px">Kalite
+        <select id="quality">
+          <option value="1">1 — Normal</option>
+          <option value="2">2 — Good</option>
+          <option value="3">3 — Outstanding</option>
+          <option value="4">4 — Excellent</option>
+          <option value="5">5 — Masterpiece</option>
+        </select></label>
+      <div class="row">
+        <label class="field">Vergi %
+          <input id="salesTax" type="number" min="0" max="30" step="0.5" value="4"></label>
+        <label class="field">Kuruluş %
+          <input id="setupFee" type="number" min="0" max="30" step="0.5" value="2.5"></label>
+      </div>
+      <label class="check"><input id="includeBlackMarket" type="checkbox"> Black Market</label>
+      <div class="history-scale" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span class="muted small">Grafik:</span>
+        <button class="chip" data-scale="1" type="button">Saatlik</button>
+        <button class="chip" data-scale="6" type="button">6 sa</button>
+        <button class="chip active" data-scale="24" type="button">Günlük</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ================= SIDEBAR: HESAP ================= -->
+  <aside class="sidebar hidden" id="sidebar-calc">
+    <div class="panel">
+      <div class="panel-title">Kâr Hesaplayıcı</div>
+      <label class="field" title="Hammaddeyi aldığın birim fiyat (gümüş)">Hammadde birim fiyatı
+        <input id="calcRes" type="number" min="0" step="10" value="300"></label>
+      <label class="field" title="Hammadde itemini seç, AODP'den en ucuz şehir fiyatını otomatik çek">Hammadde itemi (otomatik fiyat)
+        <div class="search-wrap">
+          <input id="calcItem" type="text" placeholder="Ara: ore, deri, plank… (seç, sonra çek)">
+          <div id="calcResults" class="search-results hidden"></div>
+        </div>
+        <button id="calcFetch" class="btn ghost" type="button" style="margin-top:6px">🔄 Hammadde fiyatını çek</button>
+        <span id="calcItemInfo" class="muted small"></span></label>
+      <label class="field" title="Bir ürün kaç hammadde ister (örn. T4 Metalbar ≈ 20 cevher)">Ürün başına hammadde
+        <input id="calcNeed" type="number" min="1" step="1" value="20"></label>
+      <label class="field" title="İstasyon kullanımında geri dönen hammadde yüzdesi">Dönüş oranı %
+        <input id="calcReturn" type="number" min="0" max="60" step="0.1" value="25"></label>
+      <label class="field">Üretim miktarı
+        <input id="calcQty" type="number" min="1" step="1" value="100"></label>
+      <label class="field" title="İstasyon kullanım (nutrition) ücreti — ürün başına gümüş">Ürün başına ücret
+        <input id="calcFee" type="number" min="0" step="10" value="100"></label>
+      <label class="field" title="Toplam nakliye maliyeti — maliyete eklenir (fıcı satın alımı + şehir ücretleri)">Nakliye (toplam)
+        <input id="calcShip" type="number" min="0" step="100" value="0"></label>
+      <label class="field" title="Ürünü satağın fiyat (BM alış emri veya kendi liste fiyatın)">Ürün satış fiyatı
+        <input id="calcSell" type="number" min="0" step="10" value="8000"></label>
+      <label class="field">Satış yolu
+        <select id="calcWay">
+          <option value="bo" selected>Anlık alıcı (emir)</option>
+          <option value="so">Satış emri (+ kuruluş)</option>
+        </select></label>
+      <p class="muted small" style="margin-top:10px">Vergi, filtre panelindeki <b>Premium vergisi</b> seçiminden gelir (%4 / %8). Nakliye "Nakliye (toplam)" alanından maliyete eklenir.</p>
+    </div>
+  </aside>
+
+  <!-- ================= SIDEBAR: DEFTER ================= -->
+  <aside class="sidebar hidden" id="sidebar-ledger">
+    <div class="panel">
+      <div class="panel-title">Defter Özeti</div>
+      <div id="ledgerStatsBox" class="muted small">Henüz işlem yok.</div>
+      <button id="ledgerCsv" class="btn ghost" type="button" style="margin-top:10px">CSV indir</button>
+      <button id="backupBtn" class="btn ghost" type="button" style="margin-top:8px">💾 Yedek indir (JSON)</button>
+      <button id="restoreBtn" class="btn ghost" type="button" style="margin-top:8px">📂 Yedeği geri yükle</button>
+      <input id="restoreFile" type="file" accept=".json,application/json" style="display:none">
+      <button id="ledgerClear" class="btn danger" type="button" style="margin-top:8px">Defteri temizle</button>
+      <p class="muted small" style="margin-top:10px">Tarama satırındaki <b>+</b> butonu işleği deftere ekler. "Yapıldı" işaretleyip gerçek neti yazınca kâr/zarar özeti + grafiği oluşur. Veriler tarayıcında saklanır — düzenli <b>Yedek indir</b>.</p>
+    </div>
+  </aside>
+
+  <!-- ================= SIDEBAR: EMİR (BUY ORDER) ================= -->
+  <aside class="sidebar hidden" id="sidebar-order">
+    <div class="panel">
+      <div class="panel-title">Buy Order Analizi</div>
+      <label class="field" title="Bu şehirde son 7 günde buy order'lara en az bu kadar adet satıldıysa listelenir — emrin dolma olasılığı">Min. 7g hacim
+        <input id="orderMinQty" type="number" min="1" step="10" value="30"></label>
+      <button id="orderRefresh" class="btn ghost" type="button">🔄 Yenile</button>
+      <p class="muted small" style="margin-top:10px">Buy order kurduğun şehirde insanlar emrine satış yapar; 7g hacim yüksekse emrin dolar. Emir dolar dolmaz ya aynı şehirde satış emriyle listeler ya da BM/başka şehrin anlık alıcısına sataran. Veri son taramadan gelir; hacim verisi arka planda dolar.</p>
+    </div>
+  </aside>
+
+  <!-- ================= ANA İÇERİK ================= -->
+  <div class="content">
+    <div class="status-bar">
+      <span class="status-text" id="dataAgeNote">Fiyatlar oyuncular pazarı gezdikçe yüklenir — "Veri" sütununa bak (● taze / ◐ ok / ○ bayat).</span>
+    </div>
+
+    <!-- SEKME: TARAMA -->
+    <section id="tab-scanner">
+      <section class="panel">
+        <div class="panel-title">En iyi rotalar</div>
+        <div id="routesGrid" class="routes-grid"><span class="muted small">Henüz tarama yok — "Taramayı Başlat" ile tarama yapılabilir.</span></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-title">Kırmız fırsatları <span id="scanCount" class="muted small" style="text-transform:none;letter-spacing:0"></span></div>
+        <div class="results-table-wrapper">
+          <table id="scanTable">
+            <thead><tr>
+              <th class="sortable" data-key="item">Item</th>
+              <th>Type</th>
+              <th>Origin</th>
+              <th>Dest</th>
+              <th class="num sortable" data-key="buy">Buy</th>
+              <th class="num sortable" data-key="sell">Sell</th>
+              <th class="num sortable" data-key="profit">Profit</th>
+              <th class="num sortable" data-key="margin">Margin</th>
+              <th class="num sortable" data-key="score" title="Fırsat skoru 0-100: likidite (7g hacim) × trend (fiyat yönü) × marj — tek sayıda sırala">Skor</th>
+              <th class="sortable" data-key="updated">Updated</th>
+              <th class="num" title="Son 7 günde hedef şehirde işlem gören adet (AODP canlı emir adedi/derinlik vermiyor; işlem hacmi göstergesi)">Qty</th>
+              <th class="num sortable" data-key="mv" title="Piyasa değeri: son 7 günün işlem ortalaması — oyun içi piyasa değeri">Piyasa</th>
+              <th class="num sortable" data-key="bm" title="Black Market alış emri — BM'in item başına ödediği üst fiyat; BUY+BM farkı anlık fırsat">BM</th>
+              <th title="Ürün detayını aç"></th>
+            </tr></thead>
+            <tbody id="scanRows"><tr><td colspan="14" class="muted">Henüz tarama yapılmadı.</td></tr></tbody>
+          </table>
+        </div>
+        <span id="scanFoot" class="muted small"></span>
+      </section>
+    </section>
+
+    <!-- SEKME: DETAY -->
+    <section id="tab-detail" class="hidden">
+
+      <div class="item-header" id="itemHeader">
+        <div class="item-ident">
+          <img id="itemIcon" class="item-icon" alt="">
+          <span id="itemBadge" class="item-fallback hidden"></span>
+          <div>
+            <h2 id="itemName">—</h2>
+            <span class="muted small" id="itemCode"></span>
+          </div>
+        </div>
+        <div class="kpi-row" id="kpiRow"></div>
+      </div>
+
+      <main class="grid">
+        <section class="card" id="flipCard">
+          <h3>Kırmız (Flip) fırsatları</h3>
+          <div id="flipList" class="flip-list"><p class="muted">Veri yükleniyor…</p></div>
+          <p class="muted small note">Net kâr = satış × (1 − vergi − kuruluş) − alış. Nakliye/risk dahil değildir.</p>
+        </section>
+
+        <section class="card">
+          <h3>Şehir fiyatları</h3>
+          <div class="results-table-wrapper table-wrap">
+            <table id="priceTable">
+              <thead>
+                <tr><th>Şehir</th><th class="num">Satış (min–max)</th><th class="num">Alış emri (max)</th><th>Veri yaşı</th><th class="num">Gerçek satış (3g)</th></tr>
+              </thead>
+              <tbody id="priceBody"><tr><td colspan="5" class="muted">Veri yükleniyor…</td></tr></tbody>
+            </table>
+            <p class="muted small note">Pazarda asılı emirlerin adet derinliği topluluk API'sinde kapalı — yalnızca en iyi emir fiyatı görünür. Gerçek işlem hacmi aşağıda. <b>Önemli:</b> Oyunda gördüğün daha ucuz emir (bazen <span class="age-fresh">altın-tabanlı</span>) topluluk verisine geç kalabilir. "Veri yaşı" kırmızıysa (○) o emre güvenme, "Gerçek satış (3g)" sütunuyla karşılaştır.</p>
+          </div>
+        </section>
+
+        <section class="card">
+          <h3>Gerçek satışlar (son dönem) <span id="salesSummary" class="muted small"></span></h3>
+          <div class="results-table-wrapper table-wrap">
+            <table id="salesTable">
+              <thead>
+                <tr><th>Şehir</th><th class="num">Satılan</th><th class="num">Ort. fiyat</th><th>Son satış</th><th class="num">Yakl. ciro</th><th>Trend</th></tr>
+              </thead>
+              <tbody id="salesBody"><tr><td colspan="6" class="muted">Veri yükleniyor…</td></tr></tbody>
+            </table>
+          </div>
+          <p class="muted small note">Bu tablo gerçek işlemlerden gelen veridir (AODP): seçen zaman aralığında kaç adet satıldı, ortalaması kaçtan satıldı. %243 gibi kırmızlar aslında "satılan yok" demek olabilir — bu tabloyla karşılaştır.</p>
+        </section>
+
+        <section class="card wide">
+          <h3>Fiyat geçmişi</h3>
+          <div class="chart-head">
+            <span class="muted small" id="histCaption"></span>
+            <span class="muted small" id="histStats"></span>
+          </div>
+          <div id="historyChart" class="chart"><div class="muted chart-placeholder">Grafik burada</div></div>
+          <div id="recentSales" class="recent-sales"></div>
+        </section>
+
+        <section class="card gold-card">
+          <h3>Altın fiyatı (GOLD)</h3>
+          <div class="gold-now"><span id="goldNow">—</span><span class="muted small">son saatlik</span></div>
+          <div id="goldChart" class="chart small"></div>
+        </section>
+      </main>
+    </section>
+
+    <!-- SEKME: HESAP -->
+    <section id="tab-calc" class="hidden">
+      <section class="panel">
+        <div class="panel-title">Kâr hesabı (crafting / refining)</div>
+        <div id="calcResult" class="calc-grid"><span class="muted small">Soldaki alanlara fiyatları yaz — hesap burada oluşur.</span></div>
+        <p class="muted small" style="margin-top:10px">Maliyet = hammadde × (1 − dönüş oranı) + istasyon ücreti. Net = satış × (1 − vergi) − maliyet. Refining'de örnek dönüş: %15.2 / %36.8 / %53.9 (istasyon + focus).</p>
+      </section>
+    </section>
+
+    <!-- SEKME: DEFTER -->
+    <section id="tab-ledger" class="hidden">
+      <section class="panel">
+        <div class="panel-title">Kâr grafiği (birikimli) <span id="ledgerTop" class="muted small" style="text-transform:none;letter-spacing:0"></span></div>
+        <div id="ledgerChart" class="chart"><div class="muted chart-placeholder">İşlemleri "Yapıldı" işaretleyip gerçek netleri yazınca günlük birikimli kâr grafiği burada oluşur.</div></div>
+      </section>
+      <section class="panel">
+        <div class="panel-title">Flip defteri</div>
+        <div class="results-table-wrapper">
+          <table id="ledgerTable">
+            <thead><tr><th>Tarih</th><th>Item</th><th>Rota</th><th class="num">Adet</th><th class="num">Alış</th><th class="num">Satış</th><th class="num">Plan. net</th><th>Durum</th><th class="num">Gerçek net</th><th></th></tr></thead>
+            <tbody id="ledgerBody"><tr><td colspan="10" class="muted">Defter boş — tarama satırındaki + butonuyla işlem ekle.</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+    </section>
+
+    <!-- SEKME: EMİR (BUY ORDER ANALİZİ) -->
+    <section id="tab-order" class="hidden">
+      <section class="panel">
+        <div class="panel-title">Buy Order analizi <span id="orderCount" class="muted small" style="text-transform:none;letter-spacing:0"></span></div>
+        <div class="results-table-wrapper">
+          <table id="orderTable">
+            <thead><tr>
+              <th>Item</th>
+              <th>Şehir (emri kur)</th>
+              <th class="num" title="Son 7 günde bu şehirde buy order'lara satılan adet — emrin dolma olasılığı">7g Hacim</th>
+              <th class="num" title="Kurulacak fiyat: şu anki en yüksek buy order">Kur (buy)</th>
+              <th class="num" title="Emir dolar dolmaz satış hedefi">Satış hedefi</th>
+              <th class="num">Net/adet</th>
+              <th class="num">Marjin %</th>
+              <th class="num" title="Skor: likidite × trend × marj">Skor</th>
+            </tr></thead>
+            <tbody id="orderBody"><tr><td colspan="8" class="muted">Henüz tarama yok — "Tarama" sekmesinden tarama yap, analiz taramadan beslenir.</td></tr></tbody>
+          </table>
+        </div>
+        <p class="muted small" style="margin-top:8px">Mantık: buy order kurduğun şehirde insanlar emrine satış yapar (7g hacim yüksekse emrin dolar). Emir dolar dolmaz ya aynı şehirde satış emriyle daha pahalıya listeler ya da BM/başka şehrin anlık alıcısına sataran. Net = hedef × (1 − vergi) − kurduğun buy. <b>Dürüst not:</b> AODP canlı emir derinliği vermez; hacim son 7 günün gerçek işlem adetidir.</p>
+      </section>
+    </section>
+  </div>
+</div>
+
+<footer class="foot muted small">
+  Dr aLabeen — Albion Online pazar analiz &amp; kırmız tarayıcı. Veriler topluluk tarafından yüklenir (AODP istemcisi oyun açıkken çalışmalıdır). Sandbox Interactive ile bağlantımız yoktur.
+  <span id="apiError" class="error-text"></span>
+</footer>
+
+<script src="data/scan-list.js?v=4"></script>
+<script src="app.js?v=12"></script>
+<script src="scanner.js?v=22"></script>
+<script>
+  if (typeof scannerSetup === "function") scannerSetup();
+</script>
+</body>
+</html>
