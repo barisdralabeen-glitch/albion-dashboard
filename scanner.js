@@ -167,7 +167,8 @@ function renderScanPrefs() {
   $("scanCity").innerHTML = `<option value="">Herhangi bir şehirden</option>` + ROYAL.map(c => `<option>${c}</option>`).join("");
   $("scanDest").innerHTML = `<option value="">Tüm şehirlere</option>` + ROYAL.map(c => `<option>${c}</option>`).join("") + `<option>Black Market</option>`;
   $("scanSort").innerHTML = `<option value="net">Net kâra göre</option><option value="pct">Yüzdeye göre</option>`;
-  $("scanQualityAll").innerHTML = `<option value="1">Kalite 1</option><option value="all">Tüm kaliteler (1-5)</option>`;
+  /* v27: kalite seçimi — 1-5 arası ayrı ayrı (sadece "1" ve "tümü" değildi) */
+  $("scanQualityAll").innerHTML = [1, 2, 3, 4, 5].map(n => `<option value="${n}">Kalite ${n} — ${QUALITY_NAMES[n]}</option>`).join("") + `<option value="all">Tüm kaliteler (1-5)</option>`;
   $("minNet").value = scanState.minNet;
   $("minPct").value = scanState.minPct;
 }
@@ -223,7 +224,8 @@ async function startScan(opts = {}) {
       try {
         /* BM her zaman taramada (kullanıcının ana stratejisi: ucuz liste → BM anlık satış) */
         const scanCities = ROYAL.concat(["Black Market"]);
-        const url = `${API}/prices/${batch.join(",")}?locations=${encodeURIComponent(scanCities.join(","))}&qualities=${$("scanQualityAll").value === "all" ? "1,2,3,4,5" : "1"}`;
+        const qv = $("scanQualityAll").value;
+        const url = `${API}/prices/${batch.join(",")}?locations=${encodeURIComponent(scanCities.join(","))}&qualities=${qv === "all" ? "1,2,3,4,5" : qv}`;
         const rows = await fetchJSON429(url);
         absorbRows(rows);
       } catch (e) {
@@ -265,11 +267,16 @@ async function runPool(worker, size) {
 function stopScan() { scanState.abort = true; }
 
 /* API satırlarını fırsatlara çevir */
+function scanQualSel() {
+  /* v27: seçili kalite — null = tüm kaliteler */
+  const v = $("scanQualityAll").value;
+  return v === "all" ? null : (Number(v) || 1);
+}
 function absorbRows(rows) {
   /* Buy Order analizi için ham satırları da sakla (kalite filtresine tabi) */
-  const qualAll = $("scanQualityAll").value === "all";
+  const qSel = scanQualSel();
   rows.forEach(r => {
-    if (r.quality !== 1 && !qualAll) return;
+    if (qSel && Number(r.quality) !== qSel) return;
     BO_RAW.set(r.item_id + "|" + r.quality + "|" + r.city, {
       id: r.item_id, q: r.quality, city: r.city,
       sm: r.sell_price_min || 0, bm: r.buy_price_max || 0,
@@ -277,7 +284,7 @@ function absorbRows(rows) {
   });
   const byKey = new Map();
   rows.forEach(r => {
-    if (r.quality !== 1 && $("scanQualityAll").value !== "all") return;
+    if (qSel && Number(r.quality) !== qSel) return;
     const key = r.item_id + "|" + r.quality;
     if (!byKey.has(key)) byKey.set(key, []);
     byKey.get(key).push(r);
