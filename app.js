@@ -7,7 +7,9 @@
 function aodpBase(server) {
   return `https://${server}.albion-online-data.com/api/v2/stats`;
 }
-let API = aodpBase(localStorage.getItem("albionServer") || "europe");
+const VALID_SERVERS = new Set(["europe", "west"]);
+function validServer(value) { return VALID_SERVERS.has(value) ? value : "europe"; }
+let API = aodpBase(validServer(localStorage.getItem("albionServer")));
 const ROYAL = ["Caerleon", "Bridgewatch", "Lymhurst", "Martlock", "Thetford", "Fort Sterling", "Brecilien"];
 
 /* ---------- Ürün kataloğu ---------- */
@@ -63,8 +65,22 @@ window.tierPretty = tierPretty;
 function loadPrefs() {
   try {
     const s = JSON.parse(localStorage.getItem("albionDash") || "{}");
-    Object.assign(state, s);
+    if (!s || typeof s !== "object" || Array.isArray(s)) return;
+    if (typeof s.item === "string" && isValidItemId(s.item)) state.item = s.item;
+    if (/^[1-5]$/.test(String(s.quality))) state.quality = String(s.quality);
+    state.server = validServer(s.server);
+    const salesTax = Number(s.salesTax);
+    state.salesTax = Number.isFinite(salesTax) && salesTax >= 0 && salesTax <= 100 ? salesTax : 4;
+    const setupFee = Number(s.setupFee);
+    state.setupFee = Number.isFinite(setupFee) && setupFee >= 0 && setupFee <= 100 ? setupFee : 2.5;
+    const timescale = Number(s.timescale);
+    state.timescale = [1, 6, 24].includes(timescale) ? timescale : 24;
+    state.blackMarket = s.blackMarket === true;
   } catch (e) { /* yoksay */ }
+}
+
+function isValidItemId(value) {
+  return typeof value === "string" && value.length <= 100 && /^T[1-8]_[A-Z0-9_]+(?:@[1-5])?$/.test(value);
 }
 function savePrefs() {
   try { localStorage.setItem("albionDash", JSON.stringify(state)); } catch (e) { /* kota aşımı — sessiz geç */ }
@@ -597,19 +613,39 @@ function init() {
   loadPrefs();
   /* URL parametreleri: ?item=T4_BAG&q=2 — sayfayı doğrudan istediğin ürünle açar */
   const qs = new URLSearchParams(location.search);
-  if (qs.get("server")) localStorage.setItem("albionServer", qs.get("server"));
-  const srv = localStorage.getItem("albionServer") || "europe";
+  const queryServer = qs.get("server");
+  // An explicit valid URL override wins once; otherwise the persisted dropdown
+  // choice is authoritative. Do not restore server from albionDash preferences.
+  const storedServer = localStorage.getItem("albionServer");
+  const srv = VALID_SERVERS.has(queryServer) ? queryServer : validServer(storedServer);
+  localStorage.setItem("albionServer", srv);
+  state.server = srv;
   API = aodpBase(srv);
   const srvSel = $("serverSelect");
   if (srvSel) {
     srvSel.value = srv;
     srvSel.addEventListener("change", () => {
-      localStorage.setItem("albionServer", srvSel.value);
-      location.reload();
+      // Ignore unexpected values rather than silently persisting the fallback.
+      if (!VALID_SERVERS.has(srvSel.value)) {
+        srvSel.value = validServer(localStorage.getItem("albionServer"));
+        return;
+      }
+      const selectedServer = srvSel.value;
+      localStorage.setItem("albionServer", selectedServer);
+      state.server = selectedServer;
+      API = aodpBase(selectedServer);
+      refresh();
     });
   }
-  if (qs.get("item")) { state.item = qs.get("item").toUpperCase().trim(); savePrefs(); if (typeof showTab === "function") showTab("detail"); }
-  if (qs.get("q")) { state.quality = String(Number(qs.get("q")) || state.quality); savePrefs(); }
+  if (qs.get("item")) {
+    const queryItem = qs.get("item").toUpperCase().trim();
+    if (isValidItemId(queryItem)) { state.item = queryItem; savePrefs(); if (typeof showTab === "function") showTab("detail"); }
+  }
+  if (qs.get("q")) {
+    const queryQuality = qs.get("q");
+    if (/^[1-5]$/.test(queryQuality)) state.quality = queryQuality;
+    savePrefs();
+  }
   $("quality").value = state.quality;
   $("salesTax").value = state.salesTax;
   $("setupFee").value = state.setupFee;

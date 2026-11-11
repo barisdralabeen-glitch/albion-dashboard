@@ -139,6 +139,13 @@ input[type=number], input[type=text], select {
 }
 input:focus, select:focus { outline: none; border-color: var(--accent); }
 
+/* Keyboard-only focus: maintain a clear, theme-matched indicator without
+   changing pointer interactions or the existing control dimensions. */
+:where(button, select, input, .nav-item):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 .row { display: flex; gap: 10px; }
 .row > * { flex: 1; }
 .field { display: flex; flex-direction: column; gap: 4px; }
