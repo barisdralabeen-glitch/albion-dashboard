@@ -121,15 +121,20 @@ function loadCachedScan() {
 /* albionanalyser'ın category-grid tarzında kategori listesi (checkbox + sayı) */
 /* tarama sürerken grup değişince tek seferde yeniden başlatma (hızlı tıklamalarda debounce) */
 let grpRestartT = null;
+let grpWaitT = null;   /* v26: grup bekleme interval'i modül seviyesinde — yetim interval sızıntısı yok */
 function grpRestartScan() {
   if (grpRestartT) clearTimeout(grpRestartT);
   grpRestartT = setTimeout(() => {
     grpRestartT = null;
-    if (scanState.running) stopScan();
-    const wait = setInterval(() => {
+    /* v26: otomatik tarama bayrağını stopScan'den ÖNCE yakala —
+       restart taraması auto moddaysa (autoNext ile) bildirimli sürsün */
+    if (scanState.running) { scanState.autoNext = scanState.auto; stopScan(); }
+    if (grpWaitT) clearInterval(grpWaitT);
+    grpWaitT = setInterval(() => {
       if (!scanState.running) {
-        clearInterval(wait);
-        if (typeof startScan === "function") startScan();
+        clearInterval(grpWaitT); grpWaitT = null;
+        if (typeof startScan === "function") startScan({ auto: !!scanState.autoNext });
+        scanState.autoNext = false;
       }
     }, 250);
   }, 700);
@@ -241,9 +246,12 @@ async function startScan(opts = {}) {
     $("scanInfo").textContent = `Tarama bitti · ${fmt(ids.length)} ürün · ${fmt(Math.min(scanState.filtered.length, 999))} kârlı satır · ${scanState.errors} hata · ${secsn} sn`;
   }
   scanState.loadedAt = Date.now();
-  try {
-    localStorage.setItem("scanResult", JSON.stringify({ at: Date.now(), flips: scanState.flips.slice(0, 900) }));
-  } catch (e) { /* kota aşımı */ }
+  /* v26: abort (durdur) sonrası kısmi sonuç cache'e yazılmaz — bayat/kırpık sonuç ezmesin */
+  if (!scanState.abort) {
+    try {
+      localStorage.setItem("scanResult", JSON.stringify({ at: Date.now(), flips: scanState.flips.slice(0, 900) }));
+    } catch (e) { /* kota aşımı */ }
+  }
   warmCache();
   if (scanState.auto) notifyNewFlips();
   checkFavoriteAlerts();
@@ -375,7 +383,10 @@ const QLOC = { 1002: "Caerleon", 2001: "Fort Sterling", 2002: "Lymhurst", 2003: 
 function qtyKey(city, q, id) { return `${city}|${q}|${id}`; }
 function qtyFresh(key) {
   const v = QTY[key];
-  return v && v.at && (Date.now() - v.at < 6 * 3600 * 1000) && Number.isFinite(v.qty) ? v.qty : null;
+  if (!v || !v.at || !Number.isFinite(v.qty)) return null;
+  const age = Date.now() - v.at;
+  if (v.qty < 0) return age < 10 * 60 * 1000 ? v.qty : null;   /* -1 = "veri yok" (API hatası): 10 dk taze say, sonra tekrar dene */
+  return age < 6 * 3600 * 1000 ? v.qty : null;
 }
 function saveQtyCache() {
   /* kota koruması: en yeni 600 kayıt kalsın */
@@ -450,13 +461,15 @@ async function fillQuantities() {
 }
 function qtyCellHTML(qty) {
   if (qty === null || qty === undefined) return `<span class="muted">—</span>`;
-  if (qty <= 0) return `<span class="risk-badge risk-bad" title="Son 7 günde işlem yok — likidite yok; BM emri görse bile satamama riski yüksek">işlem yok</span>`;
+  if (qty < 0) return `<span class="muted small" title="Veri çekilemedi (API hatası) — 10 dk sonra yeniden denenir">—</span>`;   /* -1 sentineli "işlem yok" sanma */
+  if (qty === 0) return `<span class="risk-badge risk-bad" title="Son 7 günde işlem yok — likidite yok; BM emri görse bile satamama riski yüksek">işlem yok</span>`;
   if (qty < 30) return `<span class="price profit-positive">${fmt(qty)}</span> <span class="muted small">· 7g</span> <span class="risk-badge" title="7 günde 30'dan az işlem — yavaş item, satış bekleyebilir">az likit</span>`;
   return `<span class="price profit-positive">${fmt(qty)}</span> <span class="muted small">· 7g</span>`;
 }
 /* item adının yanındaki qty çipi: oyun gibi ×1 / ×10 / ×100 dilimlerinde */
 function qtyChipHTML(key) {
   const v = qtyFresh(key);
+  if (v !== null && v < 0) return `<span class="muted">·</span>`;   /* veri yok (API hatası) — ×0 çipi basma */
   const b = v !== null ? qtyBucket(v) : null;
   if (b === null && v === null) return `<span class="qty-chip pending" data-qtykey="${key}">…</span>`;
   return `<span class="qty-chip" data-qtykey="${key}" title="Son 7 günde hedef şehirde satılan: ${fmt(v ?? 0)} adet">×${b ?? 0}</span>`;
@@ -1406,6 +1419,7 @@ function scoreFor(x) {
   const marj = x.buyPrice > 0 ? (x.net / x.buyPrice) * 100 : 0;
   let lik;
   if (qty === null || qty === undefined) lik = 8;
+  else if (qty < 0) lik = 0;   /* veri yok (-1) → skor bilinmiyor, düşük başlar */
   else if (qty <= 0) lik = 0;
   else lik = Math.min(40, (qty / 300) * 40);
   const tr = (typeof trend === "number" && isFinite(trend)) ? Math.max(0, Math.min(20, 10 + trend)) : 10;

@@ -1,4 +1,4 @@
-# Dr aLabeen — Albion Pazar Analiz
+﻿# Dr aLabeen — Albion Pazar Analiz
 
 Albion Online **Europe** sunucusu için canlı pazar analiz paneli ve tam pazar tarayıcı — albionanalyser.com tarzı.
 Veri kaynağı: **Albion Online Data Project (AODP)** ücretsiz açık API'si.
@@ -91,9 +91,9 @@ DEĞİL, BM'in **en yüksek buy order fiyatına (buy_price_max)** anlık satış
 ### 🧾 Kolon düzeni (12 kolon)
 `ITEM` (tier + ad + qty çipi) | `TYPE` (Anlık BO / Satış emri) | `ORIGIN` | `DEST` |
 `BUY` (en düşük liste fiyatı) | `SELL` (en yüksek anlık buy order) | `PROFIT` | `MARGIN` |
-`UPDATED` | `QTY` (son 3 gün gerçek satış) | `PİYASA` (market value + rozetler) | `↗` (detay butonu)
+`UPDATED` | `QTY` (son 7 gün gerçek satış) | `PİYASA` (market value + rozetler) | `↗` (detay butonu)
 
-**Sürümler:** scanner.js v21 · app.js v12 · serve.ps1 iki kuyruklu paralel yerel
+**Sürümler:** scanner.js v26 · app.js v15 · serve.ps1 iki kuyruklu paralel yerel
 sunucu (port 8722, IPAddress.Any ile LAN'da da dinler)### 📦 Ürün Detayı
 - **Ürün arama:** Adla (örn. "ore", "deri", "çanta", "T6") ya da doğrudan item koduyla (örn. `T6_1H_SWORD`, Enter)
 - **Şehir fiyat tablosu:** 6 kraliyet şehri (+ Black Market seçeneği): satış min–max, alış emri max, veri tazeliği
@@ -158,8 +158,8 @@ Site **Cloudflare tüneli** (cloudflared, ücretsiz, hesapsız) ile internete a�
 |----------------|--------------------------------------------------|
 | index.html     | Arayüz (Tarayıcı + Ürün Detayı + Hesap + Defter + Emir) |
 | styles.css     | Tema (koyu Albion + altın vurgu)                |
-| app.js (v12)   | Ürün detayı: API çekme, kırmız hesabı, grafikler, sparkline, son satışlar|
-| scanner.js (v22)| Tarama motoru: filtreler, flip hesabı, CSV, trend/likidite, profil, defter, hesap, favoriler+alarm, skor, buy order analizi, yedek, kısayollar, paylaş |
+| app.js (v15)   | Ürün detayı: API çekme, kırmız hesabı, grafikler, sparkline, son satışlar|
+| scanner.js (v26)| Tarama motoru: filtreler, flip hesabı, CSV, trend/likidite, profil, defter, hesap, favoriler+alarm, skor, buy order analizi, yedek, kısayollar, paylaş |
 | data/scan-list.js | 8.713 piyasa ürünü (ao-bin-dumps'tan)         |
 | serve.ps1      | Opsiyonel: iki kuyruklu yerel sunucu + AODP proxy (port 8722, LAN açık) |
 | watchdog.ps1   | Sunucuyu HTTP sağlık kontrolüyle her 5 sn denetler; takılı/düşen sunucuyu yeniden başlatır |

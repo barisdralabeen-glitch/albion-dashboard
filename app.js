@@ -1,5 +1,6 @@
 /* Albion Pazar Takip — Europe (AODP) canlı veri paneli
-   v14: europe kapalıysa west aynasına otomatik geçiş + /proxy varlık kontrolü (probeProxy) */
+   v14: europe kapalıysa west aynasına otomatik geçiş + /proxy varlık kontrolü (probeProxy)
+   v15: 502/504 ayna denemesi retry hakkını yemiyor · probeProxy content-type kontrolü · KPI şehir adları esc'li · savePrefs kota koruması */
 "use strict";
 
 /* API: seçili AODP sunucusu (albionanalyser'daki server dropdown gibi) */
@@ -66,7 +67,7 @@ function loadPrefs() {
   } catch (e) { /* yoksay */ }
 }
 function savePrefs() {
-  localStorage.setItem("albionDash", JSON.stringify(state));
+  try { localStorage.setItem("albionDash", JSON.stringify(state)); } catch (e) { /* kota aşımı — sessiz geç */ }
 }
 
 /* ---------- Veri ---------- */
@@ -123,7 +124,8 @@ async function probeProxy() {
   proxyProbed = true;
   try {
     const r = await fetch("/proxy?ping=1");
-    proxyOk = (r.status === 400 || r.ok);   /* url'siz istek 400 döner = proxy var */
+    /* v15: SPA-fallback 200+HTML dönerse proxy var sanma — gerçek /proxy JSON döndürür */
+    proxyOk = (r.status === 400) || (r.ok && String((r.headers && r.headers.get("content-type")) || "").includes("json"));
   } catch (e) { proxyOk = false; }
   return proxyOk;
 }
@@ -152,10 +154,14 @@ async function fetchJSON429(url, tries = 6) {
       const msg = String(e && e.message || e);
       if (msg.includes("(429)") && t < tries) { __aodpCoolUntil = Date.now() + 6000 * t; continue; }
       if (t < tries && (msg.includes("(502)") || msg.includes("(504)"))) {
-        // v14: 502/504'te turu tazelemeden aynayı dene (kalan hakkı varsa)
+        // v15: 502/504'te aynayı dene — ayna da patlarsa normal akışa dön (cooldown + tekrar);
+        // eski davranışta ayna hatası kalan tries hakkını yutuyordu
         if (!mirrorUsed) {
           const mu = aodpMirrorUrl(url);
-          if (mu) { mirrorUsed = true; return await attempt(USE_PROXY ? proxied(mu) : mu); }
+          if (mu) {
+            mirrorUsed = true;
+            try { return await attempt(USE_PROXY ? proxied(mu) : mu); } catch (e2) { /* ayna da patladı — normal akışa dön */ }
+          }
         }
         __aodpCoolUntil = Date.now() + 2500 * t; continue;
       }
@@ -346,9 +352,9 @@ function renderKPIs() {
   const bestBuy = buyers.reduce((p, c) => (c.buyMax > p.buyMax ? c : p), buyers[0]);
   const top = (state.flips || [])[0];
   let html = "";
-  if (bestSell) html += kpiHTML("En düşük satış", fmtSilver(bestSell.sellMin), `${bestSell.city}`);
-  if (bestBuy) html += kpiHTML("En yüksek alış emri", fmtSilver(bestBuy.buyMax), `${bestBuy.city}`);
-  if (top) html += kpiHTML("En iyi kırmız (net)", fmtSilver(top.net), `${top.buy.city} → ${top.sell.city}`, "pos");
+  if (bestSell) html += kpiHTML("En düşük satış", fmtSilver(bestSell.sellMin), escCity(bestSell.city));   /* v15: şehir adı esc'li */
+  if (bestBuy) html += kpiHTML("En yüksek alış emri", fmtSilver(bestBuy.buyMax), escCity(bestBuy.city));
+  if (top) html += kpiHTML("En iyi kırmız (net)", fmtSilver(top.net), `${escCity(top.buy.city)} → ${escCity(top.sell.city)}`, "pos");
   $("kpiRow").innerHTML = html || `<span class="muted small">Ölçümlenecek veri yok</span>`;
 }
 

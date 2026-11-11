@@ -298,11 +298,11 @@
           <div class="results-table-wrapper table-wrap">
             <table id="priceTable">
               <thead>
-                <tr><th>Şehir</th><th class="num">Satış (min–max)</th><th class="num">Alış emri (max)</th><th>Veri yaşı</th><th class="num">Gerçek satış (3g)</th></tr>
+                <tr><th>Şehir</th><th class="num">Satış (min–max)</th><th class="num">Alış emri (max)</th><th>Veri yaşı</th><th class="num" title="Son 7 günde bu şehirde gerçekten işlem gören adetlerin fiyat ortalaması">Gerçek satış (7g)</th></tr>
               </thead>
               <tbody id="priceBody"><tr><td colspan="5" class="muted">Veri yükleniyor…</td></tr></tbody>
             </table>
-            <p class="muted small note">Pazarda asılı emirlerin adet derinliği topluluk API'sinde kapalı — yalnızca en iyi emir fiyatı görünür. Gerçek işlem hacmi aşağıda. <b>Önemli:</b> Oyunda gördüğün daha ucuz emir (bazen <span class="age-fresh">altın-tabanlı</span>) topluluk verisine geç kalabilir. "Veri yaşı" kırmızıysa (○) o emre güvenme, "Gerçek satış (3g)" sütunuyla karşılaştır.</p>
+            <p class="muted small note">Pazarda asılı emirlerin adet derinliği topluluk API'sinde kapalı — yalnızca en iyi emir fiyatı görünür. Gerçek işlem hacmi aşağıda. <b>Önemli:</b> Oyunda gördüğün daha ucuz emir (bazen <span class="age-fresh">altın-tabanlı</span>) topluluk verisine geç kalabilir. "Veri yaşı" kırmızıysa (○) o emre güvenme, "Gerçek satış (7g)" sütunuyla karşılaştır.</p>
           </div>
         </section>
 
@@ -394,9 +394,9 @@
 </footer>
 
 <script src="data/scan-list.js?v=4"></script>
-<!-- v23: dar ekran (780px altı) tek kolon düzeni + scanner.js'i ilk açılışta otomatik tarama · v24: item kopyasına tier eklendi ("6.3 İsim") · v25: tarama sürerken ürün grubu değiştirilebilir (tarama yeniden başlar) · v26 (app.js v13): satış ortalamaları son 1 hafta · v14 (app.js): europe kapanınca west aynasına otomatik geçiş -->
-<script src="app.js?v=14"></script>
-<script src="scanner.js?v=25"></script>
+<!-- v23: dar ekran (780px altı) tek kolon düzeni + scanner.js'i ilk açılışta otomatik tarama · v24: item kopyasına tier eklendi ("6.3 İsim") · v25: tarama sürerken ürün grubu değiştirilebilir (tarama yeniden başlar) · v26 (app.js v13): satış ortalamaları son 1 hafta · v14 (app.js): europe kapanınca west aynasına otomatik geçiş · v27 (scanner v26): restart sızıntısı + qty -1 düzeltme · v28 (app v15): ayna retry + esc + savePrefs güvenliği -->
+<script src="app.js?v=15"></script>
+<script src="scanner.js?v=26"></script>
 <script>
   if (typeof scannerSetup === "function") scannerSetup();
 </script>
