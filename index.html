@@ -307,16 +307,16 @@
         </section>
 
         <section class="card">
-          <h3>Gerçek satışlar (son dönem) <span id="salesSummary" class="muted small"></span></h3>
+          <h3>Gerçek satırlar (son 1 hafta) <span id="salesSummary" class="muted small"></span></h3>
           <div class="results-table-wrapper table-wrap">
             <table id="salesTable">
               <thead>
-                <tr><th>Şehir</th><th class="num">Satılan</th><th class="num">Ort. fiyat</th><th>Son satış</th><th class="num">Yakl. ciro</th><th>Trend</th></tr>
+                <tr><th>Şehir</th><th class="num">Satılan</th><th class="num">Ort. fiyat <span class="muted small">(7g)</span></th><th>Son satış</th><th class="num">Yakl. ciro</th><th>Trend</th></tr>
               </thead>
               <tbody id="salesBody"><tr><td colspan="6" class="muted">Veri yükleniyor…</td></tr></tbody>
             </table>
           </div>
-          <p class="muted small note">Bu tablo gerçek işlemlerden gelen veridir (AODP): seçen zaman aralığında kaç adet satıldı, ortalaması kaçtan satıldı. %243 gibi kırmızlar aslında "satılan yok" demek olabilir — bu tabloyla karşılaştır.</p>
+          <p class="muted small note">Bu tablo gerçek işlemlerden gelen veridir (AODP): <b>son 1 haftada</b> kaç adet satıldı, ortalaması kaçtan satıldı (eski dönemler ortalamaya katılmaz). %243 gibi kırmızlar aslında "satılan yok" demek olabilir — bu tabloyla karşılaştır.</p>
         </section>
 
         <section class="card wide">
@@ -394,8 +394,8 @@
 </footer>
 
 <script src="data/scan-list.js?v=4"></script>
-<!-- v23: dar ekran (780px altı) tek kolon düzeni + scanner.js'i ilk açılışta otomatik tarama · v24: item kopyasına tier eklendi ("6.3 İsim") · v25: tarama sürerken ürün grubu değiştirilebilir (tarama yeniden başlar) -->
-<script src="app.js?v=12"></script>
+<!-- v23: dar ekran (780px altı) tek kolon düzeni + scanner.js'i ilk açılışta otomatik tarama · v24: item kopyasına tier eklendi ("6.3 İsim") · v25: tarama sürerken ürün grubu değiştirilebilir (tarama yeniden başlar) · v26 (app.js v13): satış ortalamaları son 1 hafta -->
+<script src="app.js?v=13"></script>
 <script src="scanner.js?v=25"></script>
 <script>
   if (typeof scannerSetup === "function") scannerSetup();

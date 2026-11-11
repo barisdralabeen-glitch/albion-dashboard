@@ -155,12 +155,13 @@ async function loadHistory() {
   const url = `${API}/history/${state.item}?locations=${encodeURIComponent(cities().join(","))}&qualities=1,2,3,4,5&time-scale=${state.timescale}`;
   const data = await fetchJSON429(url);
   const byTime = new Map();
-  /* Şehir bazında gerçek satış: son 14 veri noktası (günlük modda 14 gün) */
+  /* Şehir bazında gerçek satış: SON 1 HAFTA (7 gün) — eski dönemler ortalamayı bulandırır */
   const LOC = { 1002: "Caerleon", 2001: "Fort Sterling", 2002: "Lymhurst", 2003: "Martlock", 2004: "Bridgewatch", 2005: "Thetford", 3005: "Black Market" };
+  const haftaOnce = Date.now() - 7 * 24 * 3600 * 1000;
   state.salesByCity = data
     .map(entry => {
       const cityName = LOC[Number(entry.location)] || String(entry.location ?? "");
-      const days = (entry.data || []).filter(d => d.item_count > 0);
+      const days = (entry.data || []).filter(d => d.item_count > 0 && new Date(d.timestamp).getTime() >= haftaOnce);
       const totalSold = days.reduce((n, d) => n + d.item_count, 0);
       const revenue = days.reduce((n, d) => n + d.item_count * d.avg_price, 0);
       const last = days.length ? days[days.length - 1] : null;
