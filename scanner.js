@@ -233,12 +233,27 @@ async function startScan(opts = {}) {
   if (!ids.length) { $("scanInfo").textContent = "En az bir Ã¼rÃ¼n grubu seÃ§."; return; }
 
   scanState.running = true;
-  scanState.scanQuality = scanQualSel() ?? "all";
+  const requestedQuality = scanQualSel() ?? "all";
   scanState.abort = false;
   scanState.errors = 0;
   scanState.done = 0;
+  /* Keep the last successful scope available until this scan commits. Snapshot
+     before changing quality or clearing flips; failed/aborted scans restore it. */
+  const previous = {
+    flips: scanState.flips,
+    loadedAt: scanState.loadedAt,
+    resultQuality: scanState.resultQuality,
+    cacheQuality: scanState.cacheQuality,
+    scanQuality: scanState.scanQuality,
+    boRaw: BO_RAW,
+    cache: (() => {
+      try { return localStorage.getItem("scanResult"); } catch (e) { return null; }
+    })(),
+  };
+  scanState.scanBackup = previous.flips.length ? previous : null;
+  scanState.scanQuality = requestedQuality;
   scanState.flips = [];
-  BO_RAW = new Map();   /* yeni tarama = taze ham veri */
+  BO_RAW = new Map();   /* yeni tarama = taze ham veri; restore if scan is aborted */
   scanState.startedAt = performance.now();
 
   $("scanBtn").classList.add("hidden");
@@ -272,20 +287,49 @@ async function startScan(opts = {}) {
   $("stopBtn").classList.add("hidden");
   const secsn = ((performance.now() - scanState.startedAt) / 1000).toFixed(1);
   if (scanState.abort) {
+    const backup = scanState.scanBackup;
+    if (backup) {
+      scanState.flips = backup.flips;
+      scanState.loadedAt = backup.loadedAt;
+      scanState.resultQuality = backup.resultQuality;
+      scanState.cacheQuality = backup.cacheQuality;
+      scanState.scanQuality = backup.scanQuality;
+      BO_RAW = backup.boRaw;
+    } else {
+      scanState.flips = [];
+      scanState.loadedAt = previous.loadedAt;
+      scanState.resultQuality = previous.resultQuality;
+      scanState.cacheQuality = previous.cacheQuality;
+      scanState.scanQuality = previous.scanQuality;
+      BO_RAW = new Map();
+    }
+    scanState.scanBackup = null;
+    /* No code in an aborted scan writes the result cache. Keep this explicit
+       guard so a future cache write cannot silently replace the old scope. */
+    try {
+      if (previous.cache === null) localStorage.removeItem("scanResult");
+      else localStorage.setItem("scanResult", previous.cache);
+    } catch (e) { /* kota / private browsing */ }
+    applyFilters();
     $("scanInfo").textContent = `Tarama durduruldu Â· ${fmt(scanState.done)} Ã¼rÃ¼n tarandÄ± Â· ${scanState.errors} hata`;
   } else {
+    scanState.cacheQuality = scanState.scanQuality;
+    scanState.resultQuality = scanState.scanQuality;
+    scanState.scanBackup = null;
     $("scanInfo").textContent = `Tarama bitti Â· ${fmt(ids.length)} Ã¼rÃ¼n Â· ${fmt(Math.min(scanState.filtered.length, 999))} kÃ¢rlÄ± satÄ±r Â· ${scanState.errors} hata Â· ${secsn} sn`;
   }
-  scanState.loadedAt = Date.now();
+  if (!scanState.abort) scanState.loadedAt = Date.now();
   /* v26: abort (durdur) sonrasÄ± kÄ±smi sonuÃ§ cache'e yazÄ±lmaz â€” bayat/kÄ±rpÄ±k sonuÃ§ ezmesin */
   if (!scanState.abort) {
     try {
-        localStorage.setItem("scanResult", JSON.stringify({ at: Date.now(), quality: scanState.scanQuality, flips: scanState.flips.slice(0, 900) }));
+      localStorage.setItem("scanResult", JSON.stringify({ at: Date.now(), quality: scanState.resultQuality, flips: scanState.flips.slice(0, 900) }));
     } catch (e) { /* kota aÅŸÄ±mÄ± */ }
   }
-  warmCache();
-  if (scanState.auto) notifyNewFlips();
-  checkFavoriteAlerts();
+  if (!scanState.abort) {
+    warmCache();
+    if (scanState.auto) notifyNewFlips();
+    checkFavoriteAlerts();
+  }
 }
 
 /* basit eÅŸzamanlÄ± iÅŸÃ§i havuzu */
