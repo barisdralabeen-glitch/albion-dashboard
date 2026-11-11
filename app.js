@@ -1,4 +1,5 @@
-/* Albion Pazar Takip — Europe (AODP) canlı veri paneli */
+/* Albion Pazar Takip — Europe (AODP) canlı veri paneli
+   v14: europe kapalıysa west aynasına otomatik geçiş + /proxy varlık kontrolü (probeProxy) */
 "use strict";
 
 /* API: seçili AODP sunucusu (albionanalyser'daki server dropdown gibi) */
@@ -105,16 +106,41 @@ async function aodpGate() {
     return;
   }
 }
+/* v14: AODP ayna sunucuları — europe kapalıysa west'e otomatik geç (aynı veri havuzu) */
+const AODP_HOSTS = ["europe.albion-online-data.com", "west.albion-online-data.com"];
+let aodpHostIdx = 0;
+function aodpMirrorUrl(url) {
+  const m = String(url).match(/(?:europe|west)\.albion-online-data\.com/);
+  if (!m) return null;
+  const i = AODP_HOSTS.indexOf(m[0]);
+  return url.replace(m[0], AODP_HOSTS[(i + 1) % AODP_HOSTS.length]);
+}
+
+/* v14: /proxy var mı? GitHub Pages'ta yok — boş yere kilide girme */
+let proxyProbed = false, proxyOk = false;
+async function probeProxy() {
+  if (proxyProbed) return proxyOk;
+  proxyProbed = true;
+  try {
+    const r = await fetch("/proxy?ping=1");
+    proxyOk = (r.status === 400 || r.ok);   /* url'siz istek 400 döner = proxy var */
+  } catch (e) { proxyOk = false; }
+  return proxyOk;
+}
+
 async function fetchJSON429(url, tries = 6) {
   const t0 = USE_PROXY, target0 = proxied(url);
+  let mirrorUsed = false;   // v14: ayna denemesi çağrı başına 1 kez — sonsuz döngü olmasın
   const attempt = async (target) => {
     await aodpGate();
     let resp;
     try { resp = await fetch(target, { headers: { Accept: "application/json" } }); }
     catch (err) {
-      if (!USE_PROXY) { USE_PROXY = true; }   // Doğrudan API engellendiyse kalıcı olarak proxy'e geç
-      else throw new Error("Bağlantı başarısız — serve.ps1 çalışıyor mu?");
-      return attempt(target0);
+      // v14: ağ hatası — önce ayna sunucuyu dene (çağrı başına 1 kez), sonra /proxy, sonra hata
+      const mu = aodpMirrorUrl(url);
+      if (mu && !mirrorUsed) { mirrorUsed = true; return attempt(USE_PROXY ? proxied(mu) : mu); }
+      if (await probeProxy()) { USE_PROXY = true; return attempt(proxied(url)); }
+      throw new Error("AODP'ye ulaşılamıyor — internet bağlantısını ya da 'Sunucu' seçimini kontrol et");
     }
     if (resp.status === 429) throw new Error("API hatası (429)");
     if (!resp.ok) throw new Error(`API hatası (${resp.status})`);
@@ -125,7 +151,14 @@ async function fetchJSON429(url, tries = 6) {
     catch (e) {
       const msg = String(e && e.message || e);
       if (msg.includes("(429)") && t < tries) { __aodpCoolUntil = Date.now() + 6000 * t; continue; }
-      if (t < tries && (msg.includes("(502)") || msg.includes("(504)"))) { __aodpCoolUntil = Date.now() + 2500 * t; continue; }
+      if (t < tries && (msg.includes("(502)") || msg.includes("(504)"))) {
+        // v14: 502/504'te turu tazelemeden aynayı dene (kalan hakkı varsa)
+        if (!mirrorUsed) {
+          const mu = aodpMirrorUrl(url);
+          if (mu) { mirrorUsed = true; return await attempt(USE_PROXY ? proxied(mu) : mu); }
+        }
+        __aodpCoolUntil = Date.now() + 2500 * t; continue;
+      }
       throw e;
     }
   }
