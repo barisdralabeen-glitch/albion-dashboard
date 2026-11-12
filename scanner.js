@@ -56,6 +56,8 @@ let BO_RAW = new Map();
 
 /* ---------- v28: Fırsat tipi ayarları (kalıcı, scanPrefs) ----------
    firsatMod: hangi yeni satır tipleri görünsün ("both" | "cheap" | "buy");
+   v29 buy: alış = piyasa ortalamasının belirgin altında LİSTELENMİŞ item,
+   satış = güncel buy emirlerine anlık satış (emirsiz satır üretilmez);
    firsatEsik: min. indirim % (alış fiyatının piyasa değerine göre altında kalması). */
 let FIRSAT_PREFS = (() => {
   try {
@@ -605,34 +607,35 @@ function buildBuyFirsatRows() {
     const at = k.lastIndexOf("|");
     const id = k.slice(0, at);
     const q = Number(k.slice(at + 1)) || 1;
-    /* buy pazarı: BM'de emir kurulamaz — kraliyet şehirlerindeki en yüksek buy order */
-    const bo = rs.filter(r => r.bm > 0 && r.city !== "Black Market").sort((a, b) => b.bm - a.bm)[0];
-    if (!bo) return;
-    const alis = bo.bm + 1;   /* emri tam üstüne kur: yarımda kalmasın diye +1 (tamsayı) */
-    const qkey = qtyKey(bo.city, q, id);
+    /* buy pazarı (v29): ALIŞ tarafı kurulmuş buy emri DEĞİL — piyasa ortalamasının belirgin
+       altında LİSTELENMİŞ item (örn. ort. satış 150k, liste 100k). BM'de listeleme anlamsız
+       (BM yalnızca alır): kraliyet şehirlerindeki en ucuz gerçek liste alınır. */
+    const buy = rs.filter(r => r.sm > 0 && r.city !== "Black Market").sort((a, b) => a.sm - b.sm)[0];
+    if (!buy) return;
+    const qkey = qtyKey(buy.city, q, id);
     const mv = mvFresh(qkey);
-    if (mv > 0 && alis / mv > oranMax) return;   /* piyasa değerinin eşiğe kadar altında olmalı */
+    if (!(mv > 0)) return;   /* ortalama satış fiyatı bilinmiyorsa buy modunda satır üretilmez (UCUZ moduyla tutarlı) */
+    const alis = buy.sm;
+    if (alis / mv > oranMax) return;   /* ort. satış değerinin eşiğe kadar altında listelenmiş olmalı */
+    /* satış 1 (ZORUNLU): güncel buy emirlerinden en iyi anlık alıcı — tüm şehirler, BM dahil.
+       Hiç aktif buy emri yoksa buy pazarı güncel değildir: satır üretilmez. */
     let best = null;
-    /* satış 1: aynı şehirde mv üstü satış emri (emir dolar dolmaz listeler, beklersin) */
-    if (mv > 0) {
-      const net = mv * t2 - alis;
-      if (net > 0) best = { net, city: bo.city, price: mv, kind: "Emir → Satış emri" };
-    }
-    /* satış 2: başka şehrin/BM'in anlık alıcısına sat (kendi şehrinin bid'i fiyatın altında) */
     for (const r of rs) {
-      if (!(r.bm > 0) || r.city === bo.city) continue;
+      if (!(r.bm > 0)) continue;
       const net = r.bm * t1 - alis;
       if (!best || net > best.net) best = { net, city: r.city, price: r.bm, kind: "Emir → Emir" };
     }
     if (!best || !(best.net > 0)) return;
-    if (dup.has(`${id}|${q}|${bo.city}|${best.city}|${best.kind}`)) return;
+    /* satış 2 (alternatif): mv satış emri — bid zaten mevcutsa ve net daha iyiyse best'i geçer */
+    const netMv = mv * t2 - alis;
+    if (netMv > best.net) best = { net: netMv, city: buy.city, price: mv, kind: "Emir → Satış emri" };
+    if (dup.has(`${id}|${q}|${buy.city}|${best.city}|${best.kind}`)) return;
     const bmExtra = rs.find(r => r.city === "Black Market" && r.bm > 0);
-    const sameAsk = rs.find(r => r.city === bo.city && r.sm > 0);
-    out.push(mkFirsatRow(id, q, bo.city, alis, best.city, best.price, {
+    out.push(mkFirsatRow(id, q, buy.city, alis, best.city, best.price, {
       kind: best.kind, tip: "BUY",
-      indirim: mv > 0 ? (1 - alis / mv) * 100 : null,
-      mv: mv > 0 ? mv : null,
-      ask: best.kind === "Emir → Satış emri" && sameAsk ? sameAsk.sm : null,
+      indirim: (1 - alis / mv) * 100,
+      mv,
+      ask: best.kind === "Emir → Satış emri" ? buy.sm : null,
       net: best.net,
       bmExtra: bmExtra ? bmExtra.bm : 0,
     }));
@@ -1042,7 +1045,7 @@ function renderScanTable() {
     const tipBadge = x.tip === "UCUZ"
       ? `<span class="mv-badge" style="background:#22c55e2a;color:#4ade80" title="UCUZ liste fırsatı: bu item ${esc(x.buyCity)}'de piyasa değerinin %${Math.round(x.indirim ?? 0)} altında listelenmiş — listeden anında al">UCUZ</span>${Number.isFinite(x.indirim) ? ` <span class="muted small">−%${Math.round(x.indirim)}</span>` : ""}`
       : x.tip === "BUY"
-      ? `<span class="mv-badge" style="background:#3b82f62a;color:#60a5fa" title="BUY pazarı fırsatı: ${esc(x.buyCity)}'de ${fmtShort(x.buyPrice)}'a buy emri kur, stok topladıkça sat">BUY</span>${Number.isFinite(x.indirim) ? ` <span class="muted small">−%${Math.round(x.indirim)}</span>` : ""}`
+      ? `<span class="mv-badge" style="background:#3b82f62a;color:#60a5fa" title="BUY pazarı fırsatı: ${esc(x.buyCity)}'de ort. satış değerinin %${Math.round(x.indirim ?? 0)} altında listelenmiş — buy emrine anlık sat">BUY</span>${Number.isFinite(x.indirim) ? ` <span class="muted small">−%${Math.round(x.indirim)}</span>` : ""}`
       : "";
     return `
     <tr data-id="${esc(x.id)}" data-q="${Number(x.q) || 1}" data-fkey="${esc(fkeyOf(x))}" class="scan-row">
