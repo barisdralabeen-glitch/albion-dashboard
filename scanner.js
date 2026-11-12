@@ -56,8 +56,8 @@ let BO_RAW = new Map();
 
 /* ---------- v28: Fırsat tipi ayarları (kalıcı, scanPrefs) ----------
    firsatMod: hangi yeni satır tipleri görünsün ("both" | "cheap" | "buy");
-   v29 buy: alış = piyasa ortalamasının belirgin altında LİSTELENMİŞ item,
-   satış = güncel buy emirlerine anlık satış (emirsiz satır üretilmez);
+   v30 buy: alış = piyasa ortalamasının belirgin altında LİSTELENMİŞ item,
+   satış = güncel buy emri ya da ort. satış — en iyisi (UCUZ satır kümesiyle aynı);
    firsatEsik: min. indirim % (alış fiyatının piyasa değerine göre altında kalması). */
 let FIRSAT_PREFS = (() => {
   try {
@@ -607,9 +607,9 @@ function buildBuyFirsatRows() {
     const at = k.lastIndexOf("|");
     const id = k.slice(0, at);
     const q = Number(k.slice(at + 1)) || 1;
-    /* buy pazarı (v29): ALIŞ tarafı kurulmuş buy emri DEĞİL — piyasa ortalamasının belirgin
-       altında LİSTELENMİŞ item (örn. ort. satış 150k, liste 100k). BM'de listeleme anlamsız
-       (BM yalnızca alır): kraliyet şehirlerindeki en ucuz gerçek liste alınır. */
+    /* buy pazarı (v30): ALIŞ = piyasa ortalamasının belirgin altında LİSTELENMİŞ item
+       (örn. ort. satış 150k, liste 100k). BM'de listeleme anlamsız (BM yalnızca alır):
+       kraliyet şehirlerindeki en ucuz gerçek liste alınır. Satış tarafında bid ŞART DEĞİL. */
     const buy = rs.filter(r => r.sm > 0 && r.city !== "Black Market").sort((a, b) => a.sm - b.sm)[0];
     if (!buy) return;
     const qkey = qtyKey(buy.city, q, id);
@@ -617,18 +617,17 @@ function buildBuyFirsatRows() {
     if (!(mv > 0)) return;   /* ortalama satış fiyatı bilinmiyorsa buy modunda satır üretilmez (UCUZ moduyla tutarlı) */
     const alis = buy.sm;
     if (alis / mv > oranMax) return;   /* ort. satış değerinin eşiğe kadar altında listelenmiş olmalı */
-    /* satış 1 (ZORUNLU): güncel buy emirlerinden en iyi anlık alıcı — tüm şehirler, BM dahil.
-       Hiç aktif buy emri yoksa buy pazarı güncel değildir: satır üretilmez. */
+    /* satış: en iyi aktif buy emri (tüm şehirler, BM dahil) ya da ort. değerde mv satış emri —
+       ikisinin EN İYİSİ; net > 0 olan en az bir seçenek varsa satır üretilir (UCUZ ile birebir aynı) */
     let best = null;
     for (const r of rs) {
       if (!(r.bm > 0)) continue;
       const net = r.bm * t1 - alis;
       if (!best || net > best.net) best = { net, city: r.city, price: r.bm, kind: "Emir → Emir" };
     }
-    if (!best || !(best.net > 0)) return;
-    /* satış 2 (alternatif): mv satış emri — bid zaten mevcutsa ve net daha iyiyse best'i geçer */
     const netMv = mv * t2 - alis;
-    if (netMv > best.net) best = { net: netMv, city: buy.city, price: mv, kind: "Emir → Satış emri" };
+    if (!best || netMv > best.net) best = { net: netMv, city: buy.city, price: mv, kind: "Emir → Satış emri" };
+    if (!(best.net > 0)) return;
     if (dup.has(`${id}|${q}|${buy.city}|${best.city}|${best.kind}`)) return;
     const bmExtra = rs.find(r => r.city === "Black Market" && r.bm > 0);
     out.push(mkFirsatRow(id, q, buy.city, alis, best.city, best.price, {
@@ -649,9 +648,19 @@ function regenerateFirsatRows() {
   const rows = [];
   if (mode === "both" || mode === "cheap") rows.push(...buildCheapFirsatRows());
   if (mode === "both" || mode === "buy") rows.push(...buildBuyFirsatRows());
+  /* v30: UCUZ ve BUY satır kümeleri aynı — İkisi de modunda aynı fırsatı tip rozetiyle iki kez
+     göstermemek için route+kind bazlı eleme (UCUZ önce basılır, BUY ikizleri atılır) */
+  const seenRoute = new Set();
+  const unique = [];
+  rows.sort((a, b) => b.net - a.net).forEach(x => {
+    const rk = `${x.id}|${Number(x.q) || 1}|${x.buyCity}|${x.sellCity}|${x.kind}`;
+    if (seenRoute.has(rk)) return;
+    seenRoute.add(rk);
+    unique.push(x);
+  });
   const seen = new Set();
   scanState.firsat = new Map();
-  rows.sort((a, b) => b.net - a.net).slice(0, 1200).forEach(x => {
+  unique.slice(0, 1200).forEach(x => {
     const k = fkeyOf(x);
     if (!seen.has(k)) { seen.add(k); scanState.firsat.set(k, x); }
   });
@@ -1045,7 +1054,7 @@ function renderScanTable() {
     const tipBadge = x.tip === "UCUZ"
       ? `<span class="mv-badge" style="background:#22c55e2a;color:#4ade80" title="UCUZ liste fırsatı: bu item ${esc(x.buyCity)}'de piyasa değerinin %${Math.round(x.indirim ?? 0)} altında listelenmiş — listeden anında al">UCUZ</span>${Number.isFinite(x.indirim) ? ` <span class="muted small">−%${Math.round(x.indirim)}</span>` : ""}`
       : x.tip === "BUY"
-      ? `<span class="mv-badge" style="background:#3b82f62a;color:#60a5fa" title="BUY pazarı fırsatı: ${esc(x.buyCity)}'de ort. satış değerinin %${Math.round(x.indirim ?? 0)} altında listelenmiş — buy emrine anlık sat">BUY</span>${Number.isFinite(x.indirim) ? ` <span class="muted small">−%${Math.round(x.indirim)}</span>` : ""}`
+      ? `<span class="mv-badge" style="background:#3b82f62a;color:#60a5fa" title="BUY pazarı fırsatı: ${esc(x.buyCity)}'de ort. satış değerinin %${Math.round(x.indirim ?? 0)} altında listelenmiş — listeden al, buy emrine anlık ya da ort. değerde sat">BUY</span>${Number.isFinite(x.indirim) ? ` <span class="muted small">−%${Math.round(x.indirim)}</span>` : ""}`
       : "";
     return `
     <tr data-id="${esc(x.id)}" data-q="${Number(x.q) || 1}" data-fkey="${esc(fkeyOf(x))}" class="scan-row">

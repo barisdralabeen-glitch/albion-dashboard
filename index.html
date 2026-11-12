@@ -76,7 +76,7 @@
           <select id="firsatMod">
             <option value="both" selected="selected">İkisi de</option>
             <option value="cheap">Ucuz liste (anlık alış)</option>
-            <option value="buy" title="Ortalama satış değerinin belirgin altında listelenmiş item bulur, güncel buy emirlerine anlık satar (emirsiz satır göstermez)">Buy pazarı (emir)</option>
+            <option value="buy" title="Ortalama satış değerinin belirgin altında listelenmiş item bulur; satış güncel buy emrine anlık ya da ort. değerde satış emriyle olur">Buy pazarı (emir)</option>
           </select></label>
         <label class="field" title="Fırsat satırları için en düşük indirim %: alış fiyatı, piyasa değerinin en az bu kadar altında olmalı (1-90).">
           Min. indirim %
@@ -406,9 +406,9 @@
 </footer>
 
 <script src="data/scan-list.js?v=4"></script>
-<!-- Cache-buster değerleri dosya sürümleriyle eşleşir: app.js v15, scanner.js v29. -->
+<!-- Cache-buster değerleri dosya sürümleriyle eşleşir: app.js v15, scanner.js v30. -->
 <script src="app.js?v=15"></script>
-<script src="scanner.js?v=29"></script>
+<script src="scanner.js?v=30"></script>
 <script>
   if (typeof scannerSetup === "function") scannerSetup();
 </script>
