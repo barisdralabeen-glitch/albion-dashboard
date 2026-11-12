@@ -26,6 +26,7 @@ Arkadaşlarla paylaşım için kalıcı GitHub Pages bağlantısını kullan. Ye
 - **QTY:** son 7 gün içindeki gerçekleşmiş satışların toplam işlem adedi; açık emirleri saymaz.
 - **Piyasa değeri:** son 7 günün işlem hacmi-ağırlıklı ortalaması ve trend göstergeleri.
 - **Hesap, Defter ve Emir** sekmeleri; favoriler, alarmlar, profiller ve yedekleme.
+- **Fırsat tipi:** UCUZ liste (piyasa değerinin belirgin altında listelenmiş itemler) ve BUY pazarı (kraliyet şehirlerinde buy emri kurup stok satma) satırları; eşiği ve tipi panelden seç, tabloda rozet ve CSV'de `tip,indirim_pct` sütunu ile görünür.
 
 ## Güncel dosya sürümleri
 
@@ -34,11 +35,11 @@ Sürüm numaraları `index.html` içindeki cache-buster değerleriyle eşleşir:
 | Dosya | `index.html` referansı | Amaç |
 |---|---|---|
 | `app.js` | `?v=15` | Ürün detayları, API ve grafikler |
-| `scanner.js` | `?v=27` | Tarama, filtreler ve fırsat analizi |
+| `scanner.js` | `?v=28` | Tarama, filtreler ve fırsat analizi |
 | `data/scan-list.js` | `?v=4` | Tarayıcının ürün listesi |
 | `styles.css` | `?v=23` | Arayüz stilleri |
 
-> `scanner.js` içindeki kaynak yorumları özellik değişikliklerini belirtir; tarayıcının yüklediği sürüm ve cache-buster `index.html` içindeki `?v=27` değeridir.
+> `scanner.js` içindeki kaynak yorumları özellik değişikliklerini belirtir; tarayıcının yüklediği sürüm ve cache-buster `index.html` içindeki `?v=28` değeridir.
 
 ## Yayınlama
 
