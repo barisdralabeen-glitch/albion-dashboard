@@ -10,6 +10,14 @@ Cloudflare quick-tunnel yalnızca geçici yedektir: adresi dinamiktir ve değiş
 
 ## Nasıl açılır?
 
+### Tarama (kolay başlangıç)
+
+1. Fırsat türünü seç: **Flip**, **Ucuz ilan** veya **Buy fırsatı**.
+2. İstersen kaliteyi değiştir; varsayılan olarak tüm kalite seviyeleri seçilidir.
+3. **Taramayı Başlat** düğmesine bas. Tarama kendiliğinden başlamaz.
+
+Diğer ayarlar **Daha fazla ayar** bölümündedir. Sonuç tablosunda yalnızca temel sütunlar gösterilir; ek sütunları kolon görünürlüğü ayarından açabilirsin.
+
 `index.html` dosyasını tarayıcıda aç. Gerekirse yerel sunucuyu çalıştır:
 
 ```powershell
@@ -25,6 +33,7 @@ Arkadaşlarla paylaşım için kalıcı GitHub Pages bağlantısını kullan. Ye
 - **Ürün detayı:** canlı şehir fiyatları, kâr/fırsat hesapları, fiyat geçmişi, altın fiyatı ve son gerçek satış verileri.
 - **QTY:** son 7 gün içindeki gerçekleşmiş satışların toplam işlem adedi; açık emirleri saymaz.
 - **Piyasa değeri:** son 7 günün işlem hacmi-ağırlıklı ortalaması ve trend göstergeleri.
+- **Flip satış verisi:** Normal Flip satırları, hedef şehirde taze 7 günlük satış ortalaması yoksa gizlenir; geçmiş henüz yüklenirken veya API hatası olduğunda satırlar korunur ve filtreler veri geldikçe yeniden uygulanır. UCUZ/BUY mantığı değişmez.
 - **Hesap, Defter ve Emir** sekmeleri; favoriler, alarmlar, profiller ve yedekleme.
 - **Fırsat tipi:** Flip (yalnızca normal flip satırları), UCUZ liste (piyasa değerinin belirgin altında listelenmiş itemler) ve BUY pazarı (ortalama satış değerinin belirgin altında listelenmiş item bulur; satış güncel buy emrine anlık ya da ort. değerde satış emriyle olur) satırları; `Flip` yalnızca normal flipleri, `both` tüm tipleri gösterir; eşiği ve tipi panelden seç, tabloda rozet ve CSV'de `tip,indirim_pct` sütunu ile görünür.
 
@@ -37,7 +46,7 @@ Sürüm numaraları `index.html` içindeki cache-buster değerleriyle eşleşir:
 | `app.js` | `?v=15` | Ürün detayları, API ve grafikler |
 | `scanner.js` | `?v=31` | Tarama, filtreler ve fırsat analizi |
 | `data/scan-list.js` | `?v=4` | Tarayıcının ürün listesi |
-| `styles.css` | `?v=23` | Arayüz stilleri |
+| `styles.css` | `?v=26` | Arayüz stilleri |
 
 > `scanner.js` içindeki kaynak yorumları özellik değişikliklerini belirtir; tarayıcının yüklediği sürüm ve cache-buster `index.html` içindeki `?v=31` değeridir.
 

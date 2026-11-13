@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Dr aLabeen — Albion Pazar Analiz</title>
-<link rel="stylesheet" href="styles.css?v=23">
+<link rel="stylesheet" href="styles.css?v=26">
 </head>
 <body>
 
@@ -59,9 +59,8 @@
   <!-- ================= SIDEBAR: TARAMA FİLTRELERİ ================= -->
   <aside class="sidebar" id="sidebar-scanner">
     <div class="panel">
+      <p class="scan-intro">1. Fırsat türünü seç. 2. Gerekirse kaliteyi değiştir. 3. Taramayı Başlat'a bas.</p>
       <div class="panel-title">Pazar Ayarları</div>
-      <label>Ürün grupları <span class="muted small">(tarama kapsamı)</span></label>
-      <div id="scanChips" class="chips category-grid"></div>
       <div class="control-row">
         <label class="field">Min. tier
           <select id="scanTierMin" class="narrow"></select></label>
@@ -83,10 +82,17 @@
           Min. indirim %
           <input id="firsatEsik" type="number" min="1" max="90" step="1" value="15"></label>
       </div>
+      <details class="advanced-filters">
+        <summary>Daha fazla ayar</summary>
+        <p class="muted small">İstersen şehir, kâr ve diğer filtreleri buradan değiştirebilirsin.</p>
+      <details class="category-filters">
+        <summary>Ürün grupları <span class="muted small">(tarama kapsamı)</span></summary>
+        <div id="scanChips" class="chips category-grid"></div>
+      </details>
       <div class="row">
-        <label class="field">Buy in (Kaynak)
+        <label class="field">Alış şehri
           <select id="scanCity"></select></label>
-        <label class="field">Sell in (Hedef)
+        <label class="field">Satış şehri
           <select id="scanDest"></select></label>
       </div>
       <div class="row">
@@ -136,6 +142,7 @@
           <button id="colBtn" class="btn ghost" type="button">Göster/gizle</button></label>
       </div>
       <div id="colPanel" class="col-panel hidden"></div>
+      </details>
       <button id="scanBtn" class="btn primary" type="button" onclick="startScan()">🚀 Taramayı Başlat</button>
       <button id="stopBtn" class="btn danger hidden" type="button" onclick="stopScan()" style="margin-top:8px">⏹ Durdur</button>
       <div style="display:flex;gap:8px;margin-top:8px">
@@ -263,21 +270,21 @@
           <table id="scanTable">
             <thead><tr>
               <th class="sortable" data-key="item">Item</th>
-              <th>Type</th>
-              <th>Origin</th>
-              <th>Dest</th>
-              <th class="num sortable" data-key="buy">Buy</th>
-              <th class="num sortable" data-key="sell">Sell</th>
-              <th class="num sortable" data-key="profit">Profit</th>
-              <th class="num sortable" data-key="margin">Margin</th>
-              <th class="num sortable" data-key="score" title="Fırsat skoru 0-100: likidite (7g hacim) × trend (fiyat yönü) × marj — tek sayıda sırala">Skor</th>
-              <th class="sortable" data-key="updated">Updated</th>
-              <th class="num" title="Son 7 günde hedef şehirde işlem gören adet (AODP canlı emir adedi/derinlik vermiyor; işlem hacmi göstergesi)">Qty</th>
-              <th class="num sortable" data-key="mv" title="Piyasa değeri: son 7 günün işlem ortalaması — oyun içi piyasa değeri">Piyasa</th>
-              <th class="num sortable" data-key="bm" title="Black Market alış emri — BM'in item başına ödediği üst fiyat; BUY+BM farkı anlık fırsat">BM</th>
+              <th>Tür</th>
+              <th>Alış şehri</th>
+              <th>Satış şehri</th>
+              <th class="num sortable" data-key="buy">Alış</th>
+              <th class="num sortable" data-key="sell">Satış</th>
+              <th class="num sortable" data-key="profit">Tahmini kâr</th>
+              <th class="num sortable" data-key="margin">Kâr %</th>
+              <th class="num sortable" data-key="score" title="Fırsat skoru 0-100: likidite (7g hacim), trend ve marj">Skor</th>
+              <th class="sortable" data-key="updated">Veri</th>
+              <th class="num" title="Son 7 günde hedef şehirde işlem gören adet">Adet (7g)</th>
+              <th class="num sortable" data-key="mv" title="Son 7 günün gerçek işlem ortalaması">Piyasa (7g)</th>
+              <th class="num sortable" data-key="bm" title="Black Market alış emri - BM'in item başına ödediği üst fiyat">BM fiyatı</th>
               <th title="Ürün detayını aç"></th>
             </tr></thead>
-            <tbody id="scanRows"><tr><td colspan="14" class="muted">Henüz tarama yapılmadı.</td></tr></tbody>
+            <tbody id="scanRows"><tr><td colspan="10" class="muted">Henüz tarama yapılmadı.</td></tr></tbody>
           </table>
         </div>
         <span id="scanFoot" class="muted small"></span>

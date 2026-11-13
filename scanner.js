@@ -897,6 +897,15 @@ function applyFilters() {
     if (resultQuality !== undefined && resultQuality !== "all" && Number(x.q) !== Number(resultQuality)) return false;
     if (qualityFilter !== null && Number(x.q) !== qualityFilter) return false;
     if (scanState.firsatMod === "flip" && x.tip) return false;
+    /* Normal Flip rows require actual 7-day sales in the destination. Keep
+       unresolved/API-error lookups visible; once a fresh result is cached,
+       zero MV confirms there is no usable sales data. UCUZ/BUY are unaffected. */
+    if (!x.tip) {
+      const sellKey = qtyKey(x.sellCity, Number(x.q) || 1, x.id);
+      const sellMv = mvFresh(sellKey);
+      const sellQty = qtyFresh(sellKey);
+      if (sellMv !== null && !(sellMv > 0) && sellQty !== null && sellQty >= 0) return false;
+    }
     if (x.tip === "UCUZ") {
       /* fırsat satırları kâr eşiğine değil kendi indirim eşiğine tabi — modda buy seçiliyken görünmez */
       if (scanState.firsatMod === "buy" || scanState.firsatMod === "flip") return false;
@@ -1048,7 +1057,7 @@ function renderScanTable() {
     ? `${fmt(scanState.filtered.length)} fırsat · ilk 400 gösteriliyor`
     : `${fmt(scanState.filtered.length)} fırsat`;
   if (!rows.length) {
-    $("scanRows").innerHTML = `<tr><td colspan="14" class="muted">Sonuç yok — daha düşük eşik dene ya da taramayı başlat.</td></tr>`;
+    $("scanRows").innerHTML = `<tr><td colspan="10" class="muted">Sonuç yok — daha düşük eşik dene ya da taramayı başlat.</td></tr>`;
     return;
   }
   $("scanRows").innerHTML = rows.map((x, n) => {
@@ -1092,7 +1101,7 @@ function renderScanTable() {
         <img loading="lazy" alt="" class="item-icon" src="https://render.albiononline.com/v2/item/${esc(x.id)}.png?size=32" onerror="this.style.display='none'">
         <span><span class="item-name copyname" data-copyname="${esc(shortName)}" data-copyfull="${esc(tp + ' ' + shortName)}" title="Tıkla: ismi kopyala (oyuna yapıştır) · Shift+tık: item kodu kopyalar">${tp} ${esc(shortName)}</span> ${qtyChipHTML(qkey)}<br><span class="muted small">${subTier}${qLabel}</span></span>
       </div></td>
-      <td class="kind-label" title="${esc(x.kind)}">${tipBadge ? tipBadge + "<br>" : ""}${x.kind === "Emir → Emir" ? "Anlık (BO)" : "Satış emri"}</td>
+      <td class="kind-label" title="${esc(x.kind)}">${x.tip === "UCUZ" ? "Ucuz liste · anlık satış" : x.tip === "BUY" ? "Buy pazarı · emir" : x.kind === "Emir → Emir" ? "Emir → Emir" : "Flip"}${tipBadge ? "<br>" + tipBadge : ""}</td>
       <td><span class="city-tag city-${esc(x.buyCity.replace(/\s/g, ""))}">${esc(x.buyCity)}</span></td>
       <td><span class="city-tag city-${esc(x.sellCity.replace(/\s/g, ""))}">${esc(x.sellCity)}</span></td>
     <td class="num price">${fmtShort(x.buyPrice)} <span class="buyqty" data-qtykey="${esc(bqkey)}">${qtyFresh(bqkey) !== null ? buyqtyHTML(qtyFresh(bqkey)) : `<span class="muted small">…</span>`}</span></td>`
