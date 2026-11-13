@@ -71,10 +71,11 @@
       <label class="field">Kalite
         <select id="scanQualityAll"></select></label>
       <div class="row">
-        <label class="field" title="Fırsat tipleri: sadece normal flip ve seçtiğin yeni satır tipleri listelenir. Normal flip satırları her zaman gösterilir.">
+        <label class="field" title="Flip yalnızca normal flipleri; Ucuz liste ve Buy pazarı ilgili fırsatları gösterir. İkisi de hepsini gösterir.">
           Fırsat tipi
           <select id="firsatMod">
             <option value="both" selected="selected">İkisi de</option>
+            <option value="flip">Flip</option>
             <option value="cheap">Ucuz liste (anlık alış)</option>
             <option value="buy" title="Ortalama satış değerinin belirgin altında listelenmiş item bulur; satış güncel buy emrine anlık ya da ort. değerde satış emriyle olur">Buy pazarı (emir)</option>
           </select></label>
@@ -90,9 +91,9 @@
       </div>
       <div class="row">
         <label class="field">Min. net kâr
-          <input id="minNet" type="number" min="0" step="1000"></label>
+          <input id="minNet" type="number" min="0" step="1000" value="0"></label>
         <label class="field">Min. marjin %
-          <input id="minPct" type="number" min="0" step="1"></label>
+          <input id="minPct" type="number" min="0" step="1" value="10"></label>
       </div>
       <label class="field">Sıralama
         <select id="scanSort"></select></label>
@@ -406,9 +407,9 @@
 </footer>
 
 <script src="data/scan-list.js?v=4"></script>
-<!-- Cache-buster değerleri dosya sürümleriyle eşleşir: app.js v15, scanner.js v30. -->
+<!-- Cache-buster değerleri dosya sürümleriyle eşleşir: app.js v15, scanner.js v31. -->
 <script src="app.js?v=15"></script>
-<script src="scanner.js?v=30"></script>
+<script src="scanner.js?v=31"></script>
 <script>
   if (typeof scannerSetup === "function") scannerSetup();
 </script>

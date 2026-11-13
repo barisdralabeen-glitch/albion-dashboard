@@ -26,7 +26,7 @@ Arkadaşlarla paylaşım için kalıcı GitHub Pages bağlantısını kullan. Ye
 - **QTY:** son 7 gün içindeki gerçekleşmiş satışların toplam işlem adedi; açık emirleri saymaz.
 - **Piyasa değeri:** son 7 günün işlem hacmi-ağırlıklı ortalaması ve trend göstergeleri.
 - **Hesap, Defter ve Emir** sekmeleri; favoriler, alarmlar, profiller ve yedekleme.
-- **Fırsat tipi:** UCUZ liste (piyasa değerinin belirgin altında listelenmiş itemler) ve BUY pazarı (ortalama satış değerinin belirgin altında listelenmiş item bulur; satış güncel buy emrine anlık ya da ort. değerde satış emriyle olur) satırları; eşiği ve tipi panelden seç, tabloda rozet ve CSV'de `tip,indirim_pct` sütunu ile görünür.
+- **Fırsat tipi:** Flip (yalnızca normal flip satırları), UCUZ liste (piyasa değerinin belirgin altında listelenmiş itemler) ve BUY pazarı (ortalama satış değerinin belirgin altında listelenmiş item bulur; satış güncel buy emrine anlık ya da ort. değerde satış emriyle olur) satırları; `Flip` yalnızca normal flipleri, `both` tüm tipleri gösterir; eşiği ve tipi panelden seç, tabloda rozet ve CSV'de `tip,indirim_pct` sütunu ile görünür.
 
 ## Güncel dosya sürümleri
 
@@ -35,11 +35,11 @@ Sürüm numaraları `index.html` içindeki cache-buster değerleriyle eşleşir:
 | Dosya | `index.html` referansı | Amaç |
 |---|---|---|
 | `app.js` | `?v=15` | Ürün detayları, API ve grafikler |
-| `scanner.js` | `?v=30` | Tarama, filtreler ve fırsat analizi |
+| `scanner.js` | `?v=31` | Tarama, filtreler ve fırsat analizi |
 | `data/scan-list.js` | `?v=4` | Tarayıcının ürün listesi |
 | `styles.css` | `?v=23` | Arayüz stilleri |
 
-> `scanner.js` içindeki kaynak yorumları özellik değişikliklerini belirtir; tarayıcının yüklediği sürüm ve cache-buster `index.html` içindeki `?v=30` değeridir.
+> `scanner.js` içindeki kaynak yorumları özellik değişikliklerini belirtir; tarayıcının yüklediği sürüm ve cache-buster `index.html` içindeki `?v=31` değeridir.
 
 ## Yayınlama
 
@@ -59,3 +59,4 @@ Dağıtım betiği kopyalanan her dosyanın SHA-256 değerini kaynakla doğrular
 - QTY, AODP'nin son 7 günlük geçmiş işlem verisinden hesaplanır; veri kaydı yoksa miktar sıfır veya eksik görünebilir.
 - Veriler topluluk tarafından AODP'ye yüklenir; bazı ürünlerde güncel veri bulunmayabilir.
 - Bu araç Sandbox Interactive GmbH ile bağlantılı değildir.
+Flip modu yalnizca normal flip satirlarini gosterir. Yerel 7g islem ortalamasi yoksa genel ortalama ve katkida bulunan sehirler tooltipte belirtilir; item hover tooltipinde tum sehirlerin min sell / max buy fiyatlari bulunur.

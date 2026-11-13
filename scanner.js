@@ -29,14 +29,14 @@ const scanState = {
   filtered: [],
   errors: 0,
   startedAt: 0,
-  minNet: 50000,
-  minPct: 5,
+  minNet: 0,
+  minPct: 10,
   depart: "",
   sort: "net",
   favOnly: false,
   /* v28: Fırsat tipi (UCUZ / BUY) satırları ve ayarları */
   firsat: new Map(),   /* fkeyOf → satır; normal flip satırlarından ayrı tutulur */
-  firsatMod: "both",   /* "both" | "cheap" | "buy" */
+  firsatMod: "both",   /* "both" | "flip" | "cheap" | "buy" */
   firsatEsik: 15,      /* min. indirim % */
 };
 
@@ -67,7 +67,7 @@ let FIRSAT_PREFS = (() => {
 })();
 function firsatMode() {
   const v = $("firsatMod")?.value ?? scanState.firsatMod;
-  return ["both", "cheap", "buy"].includes(v) ? v : "both";
+  return ["both", "flip", "cheap", "buy"].includes(v) ? v : "both";
 }
 function firsatThreshold() {
   const v = Number($("firsatEsik")?.value);
@@ -77,7 +77,8 @@ function firsatThreshold() {
 function firsatSavePrefs() {
   scanState.firsatMod = firsatMode();
   scanState.firsatEsik = firsatThreshold();
-  try { localStorage.setItem("scanPrefs", JSON.stringify({ mod: scanState.firsatMod, esik: scanState.firsatEsik })); } catch (e) { /* kota */ }
+  FIRSAT_PREFS = { ...FIRSAT_PREFS, mod: scanState.firsatMod, esik: scanState.firsatEsik };
+  try { localStorage.setItem("scanPrefs", JSON.stringify(FIRSAT_PREFS)); } catch (e) { /* kota */ }
 }
 
 function esc(s) {
@@ -174,6 +175,8 @@ let grpWaitT = null;   /* v26: grup bekleme interval'i modül seviyesinde — ye
 let qualityRestartT = null;
 let qualityWaitT = null;
 function grpRestartScan() {
+  /* Filter edits only restart an active scan; idle edits wait for an explicit user start. */
+  if (!scanState.running) return;
   if (grpRestartT) clearTimeout(grpRestartT);
   grpRestartT = setTimeout(() => {
     grpRestartT = null;
@@ -191,6 +194,8 @@ function grpRestartScan() {
   }, 700);
 }
 function qualityRestartScan() {
+  /* A quality change narrows/widens the API scope, but must not start an idle scan. */
+  if (!scanState.running) return;
   if (qualityRestartT) clearTimeout(qualityRestartT);
   qualityRestartT = setTimeout(() => {
     qualityRestartT = null;
@@ -236,10 +241,18 @@ function renderScanPrefs() {
   $("scanCity").innerHTML = `<option value="">Herhangi bir şehirden</option>` + ROYAL.map(c => `<option>${c}</option>`).join("");
   $("scanDest").innerHTML = `<option value="">Tüm şehirlere</option>` + ROYAL.map(c => `<option>${c}</option>`).join("") + `<option>Black Market</option>`;
   $("scanSort").innerHTML = `<option value="net">Net kâra göre</option><option value="pct">Yüzdeye göre</option>`;
-  /* v27: kalite seçimi — 1-5 arası ayrı ayrı (sadece "1" ve "tümü" değildi) */
-  $("scanQualityAll").innerHTML = [1, 2, 3, 4, 5].map(n => `<option value="${n}">Kalite ${n} — ${QUALITY_NAMES[n]}</option>`).join("") + `<option value="all">Tüm kaliteler (1-5)</option>`;
-  $("minNet").value = scanState.minNet;
-  $("minPct").value = scanState.minPct;
+  /* Keep a saved quality preference; new users default to all qualities. */
+  const savedQuality = FIRSAT_PREFS && (FIRSAT_PREFS.qual === "all" || /^[1-5]$/.test(String(FIRSAT_PREFS.qual)))
+    ? String(FIRSAT_PREFS.qual)
+    : "all";
+  $("scanQualityAll").innerHTML = `<option value="all">Tüm kaliteler (1-5)</option>` +
+    [1, 2, 3, 4, 5].map(n => `<option value="${n}">Kalite ${n} — ${QUALITY_NAMES[n]}</option>`).join("");
+  $("scanQualityAll").value = savedQuality;
+  FIRSAT_PREFS.qual = savedQuality;
+  const savedMinNet = localStorage.getItem("scanMinNet");
+  const savedMinPct = localStorage.getItem("scanMinPct");
+  $("minNet").value = savedMinNet !== null && Number.isFinite(Number(savedMinNet)) ? savedMinNet : scanState.minNet;
+  $("minPct").value = savedMinPct !== null && Number.isFinite(Number(savedMinPct)) ? savedMinPct : scanState.minPct;
 }
 
 /* ---------- Tarama ---------- */
@@ -310,7 +323,7 @@ async function startScan(opts = {}) {
       const batch = batches[cursor++];
       try {
         /* BM her zaman taramada (kullanıcının ana stratejisi: ucuz liste → BM anlık satış) */
-        const scanCities = ROYAL.concat(["Black Market"]);
+        const scanCities = CITY_LOCATIONS;
         const qv = scanState.scanQuality;
         const url = `${API}/prices/${batch.join(",")}?locations=${encodeURIComponent(scanCities.join(","))}&qualities=${qv === "all" ? "1,2,3,4,5" : qv}`;
         const rows = await fetchJSON429(url);
@@ -648,7 +661,7 @@ function regenerateFirsatRows() {
   const rows = [];
   if (mode === "both" || mode === "cheap") rows.push(...buildCheapFirsatRows());
   if (mode === "both" || mode === "buy") rows.push(...buildBuyFirsatRows());
-  /* v30: UCUZ ve BUY satır kümeleri aynı — İkisi de modunda aynı fırsatı tip rozetiyle iki kez
+  /* v31: UCUZ ve BUY satır kümeleri aynı — İkisi de modunda aynı fırsatı tip rozetiyle iki kez
      göstermemek için route+kind bazlı eleme (UCUZ önce basılır, BUY ikizleri atılır) */
   const seenRoute = new Set();
   const unique = [];
@@ -713,6 +726,7 @@ function saveQtyCache() {
 }
 /* Piyasa değeri (market value): son 7 günün işlem ortalaması, item + kalite + şehir bazında */
 let MVA = (() => { try { return JSON.parse(localStorage.getItem("mvCache") || "{}"); } catch (e) { return {}; } })();
+const CITY_LOCATIONS = ROYAL.concat(["Black Market"]);
 function mvFresh(key) {
   const v = MVA[key];
   return v && v.at && (Date.now() - v.at < 6 * 3600 * 1000) && Number.isFinite(v.mv) ? v.mv : null;
@@ -725,32 +739,37 @@ function saveMvCache() {
   }
   try { localStorage.setItem("mvCache", JSON.stringify(MVA)); } catch (e) { /* yoksay */ }
 }
+function generalMv(id, q) {
+  const cities = CITY_LOCATIONS.map(city => {
+    const key = qtyKey(city, Number(q) || 1, id), v = MVA[key];
+    return v && v.at && Date.now() - v.at < 6 * 3600 * 1000 && Number.isFinite(v.mv) && v.mv > 0 ? { city, mv: v.mv, qty: Math.max(0, Number((QTY[key] || {}).qty) || 0) } : null;
+  }).filter(Boolean);
+  if (!cities.length) return null;
+  const weight = cities.reduce((n, c) => n + c.qty, 0);
+  return { mv: weight ? cities.reduce((n, c) => n + c.mv * c.qty, 0) / weight : cities.reduce((n, c) => n + c.mv, 0) / cities.length, cities };
+}
 async function fetchQty(city, q, id) {
-  const key = qtyKey(city, q, id);
-  const cachedQty = qtyFresh(key);
-  const cachedMv = mvFresh(key);
-  if (cachedQty !== null && cachedMv !== null) return { qty: cachedQty, mv: cachedMv };
+  const key = qtyKey(city, q, id), cachedQty = qtyFresh(key), cachedMv = mvFresh(key);
+  const locations = [...new Set(ROYAL.concat(["Black Market"]))];
+  const cachedEverywhere = locations.every(location => mvFresh(qtyKey(location, q, id)) !== null && qtyFresh(qtyKey(location, q, id)) !== null);
+  if (cachedEverywhere && cachedQty !== null && cachedMv !== null) return { qty: cachedQty, mv: cachedMv, general: generalMv(id, q), cities: (generalMv(id, q)?.cities || []) };
   try {
-    const data = await fetchJSON429(`${API}/history/${encodeURIComponent(id)}?locations=${encodeURIComponent(city)}&qualities=${Number(q)}&time-scale=24`);
-    const entry = (data || []).find(e => (QLOC[Number(e.location)] || String(e.location ?? "")) === city && Number(e.quality) === Number(q));
-    const days = entry ? (entry.data || []).filter(d => d.item_count > 0) : [];
-    days.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-    /* son 7 günün toplam işlem hacmi (order depth verisi olmadığı için en dürüst "kaç alınabilir" ölçüsü) */
-    const qty = days.slice(-7).reduce((n, d) => n + d.item_count, 0);
-    /* Piyasa değeri: son 7 günün adet-ağırlıklı ortalaması */
-    const r7 = days.slice(-7);
-    const wsum = r7.reduce((n, d) => n + d.item_count, 0);
-    const mv = wsum > 0 ? r7.reduce((n, d) => n + d.item_count * d.avg_price, 0) / wsum : 0;
-    const at = Date.now();
-    QTY[key] = { qty, at };
-    MVA[key] = { mv, at, ser: r7.map(d => d.avg_price) };
-    saveQtyCache();
-    saveMvCache();
-    return { qty, mv };
+
+    const data = await fetchJSON429(`${API}/history/${encodeURIComponent(id)}?locations=${encodeURIComponent(locations.join(","))}&qualities=${Number(q)}&time-scale=24`);
+    const at = Date.now(), results = Object.create(null);
+    for (const cityName of locations) {
+      const entry = (data || []).find(e => (QLOC[Number(e.location)] || String(e.location ?? "")) === cityName && Number(e.quality) === Number(q));
+      const days = entry ? (entry.data || []).filter(d => d.item_count > 0) : [];
+      days.sort((x, y) => new Date(x.timestamp) - new Date(y.timestamp));
+      const r7 = days.slice(-7), qty = r7.reduce((n, d) => n + Number(d.item_count || 0), 0);
+      const mv = qty > 0 ? r7.reduce((n, d) => n + Number(d.item_count || 0) * Number(d.avg_price || 0), 0) / qty : 0;
+      const ck = qtyKey(cityName, q, id); QTY[ck] = { qty, at }; MVA[ck] = { mv, at, ser: r7.map(d => Number(d.avg_price || 0)) }; results[cityName] = { qty, mv };
+    }
+    saveQtyCache(); saveMvCache();
+    return { qty: results[city] ? results[city].qty : 0, mv: results[city] ? results[city].mv : 0, general: generalMv(id, q), cities: Object.keys(results).filter(c => results[c].mv > 0).map(c => ({ city: c, mv: results[c].mv })) };
   } catch (e) {
-    QTY[key] = { qty: -1, at: Date.now() }; /* negatif = "veri yok", tekrar deneme kalması */
-    saveQtyCache();
-    return { qty: null, mv: null };
+    QTY[key] = { qty: -1, at: Date.now() }; saveQtyCache();
+    return { qty: null, mv: null, general: generalMv(id, q) };
   }
 }
 async function fillQuantities() {
@@ -829,7 +848,11 @@ function updateMvSlots(key, mv) {
   document.querySelectorAll(`td.mv-cell[data-qtykey="${key}"]`).forEach(el => {
     const buy = Number(el.dataset.buy || 0);
     const sell = Number(el.dataset.sell || 0);
-    el.innerHTML = mvCellHTMLRow(mv, buy, sell, mvTrendOf(key));
+    const parts = key.split("|"), local = mvFresh(key);
+    const fallback = parts.length >= 3 && !(local > 0) ? generalMv(parts.slice(2).join("|"), parts[1]) : null;
+    const value = local > 0 ? local : (fallback && fallback.mv > 0 ? fallback.mv : mv);
+    el.innerHTML = mvCellHTMLRow(value, buy, sell, local > 0 ? mvTrendOf(key) : null) + (fallback && fallback.mv > 0 ? ` <span class="muted small">(genel ort.)</span>` : "");
+    if (fallback && fallback.mv > 0) el.title = `Genel ortalama. Katkılar: ${esc(fallback.cities.map(c => c.city + ": " + fmtShort(c.mv)).join(", "))}`;
   });
 }
 
@@ -873,16 +896,20 @@ function applyFilters() {
     /* Quality filtering must honor both the UI choice and the actual scan/cache scope. */
     if (resultQuality !== undefined && resultQuality !== "all" && Number(x.q) !== Number(resultQuality)) return false;
     if (qualityFilter !== null && Number(x.q) !== qualityFilter) return false;
+    if (scanState.firsatMod === "flip" && x.tip) return false;
     if (x.tip === "UCUZ") {
       /* fırsat satırları kâr eşiğine değil kendi indirim eşiğine tabi — modda buy seçiliyken görünmez */
-      if (scanState.firsatMod === "buy") return false;
+      if (scanState.firsatMod === "buy" || scanState.firsatMod === "flip") return false;
       const esik = scanState.firsatEsik;
       if (x.mv > 0 && x.buyPrice > 0 && x.buyPrice / x.mv > (100 - esik) / 100) return false;
     } else if (x.tip === "BUY") {
-      if (scanState.firsatMod === "cheap") return false;
+      if (scanState.firsatMod === "cheap" || scanState.firsatMod === "flip") return false;
       const esik = scanState.firsatEsik;
       if (x.mv > 0 && x.buyPrice > 0 && x.buyPrice / x.mv > (100 - esik) / 100) return false;
-    } else if (x.net < mn || x.pct < mp) return false;   /* normal flip: eşik burada */
+    } else {
+      if (scanState.firsatMod === "cheap" || scanState.firsatMod === "buy") return false;
+      if (x.net < mn || x.pct < mp) return false;
+    }
     if (scanState.favOnly && !isFav(x.id, x.q)) return false;
     if (scanState.depart && x.buyCity !== scanState.depart) return false;
     if (scanState.dest && x.sellCity !== scanState.dest) return false;
@@ -976,47 +1003,45 @@ function qtyBucket(qty) {
    Liste fiyatı (ask) senin sattığın fiyat DEĞİL — rakibin listelendiği fiyat.
    Gerçekçi satış = o şehirde son 7 günte bloğa gerçekten işlem gören ortalama (history mv).
    Kaçara: Liste fiyatına satış garantisi yok; işlem yoksa risk yüksek. */
-function realSellHTML(mv, ask, buy) {
-  const t2 = 1 - (state.salesTax + state.setupFee) / 100;
-  let top = "";
-  if (mv && mv > 0) {
-    top = `<span class="price">${fmtShort(mv)}</span> <span class="muted small" title="Son 7 günün gerçek işlem ortalaması — satış beyanını (sell order) bunun civarına koyman gerekir">son satış</span><br><span class="muted small" title="Şu an en düşük liste fiyatı (rakibin ask — onunla yarışman gerekir)">liste ${fmtShort(ask)}</span>`;
-  } else {
-    top = `<span class="muted small" title="Bu itemin işlem kaydı yok — listede fiyat garanti edilemez, risk yüksek. Anlık buy order satırını tercih et">son satış ?</span><br><span class="muted small">liste ${fmtShort(ask)}</span>`;
-  }
-  if (mv && mv > 0 && buy > 0) {
-    const net = mv * t2 - buy;
-    top += ` <span class="net-chip ${net >= 0 ? "positive" : "negative"}" title="Vergi+kuruluş (%${state.salesTax}+%${state.setupFee}) düşünce eline kalan net">${net >= 0 ? "+" : "−"}${fmtShort(Math.abs(net))}</span>`;
-  }
-  return top;
+function realSellHTML(mv, ask, buy, fallback) {
+  const missingLocal = !(mv > 0), useFallback = missingLocal && fallback && fallback.mv > 0;
+  if (useFallback) mv = fallback.mv;
+  const note = useFallback ? ` <span class="muted small" title="Genel ortalama katkıları: ${esc(fallback.cities.map(c => c.city + ": " + fmtShort(c.mv)).join(", "))}">(genel ort.)</span>` : "";
+  const tax = 1 - (state.salesTax + state.setupFee) / 100;
+  const sale = mv > 0 ? `<span class="price">${fmtShort(mv)}</span> <span class="muted small">7g satış</span>${note}<br>` : `<span class="muted small">satış verisi yok</span><br>`;
+  const net = mv > 0 && buy > 0 ? ` <span class="net-chip ${mv * tax - buy >= 0 ? "positive" : "negative"}">${mv * tax - buy >= 0 ? "+" : "-"}${fmtShort(Math.abs(mv * tax - buy))}</span>` : "";
+  return sale + `<span class="muted small">liste ${fmtShort(ask)}</span>` + net;
 }
-function realProfitHTML(mv, buy) {
-  const t2 = 1 - (state.salesTax + state.setupFee) / 100;
-  if (!(mv && mv > 0)) return `<span class="muted">?</span>`;
-  const net = mv * t2 - buy;
-  return `<span class="price ${net < 0 ? "profit-negative" : "profit-positive"}" title="Gerçekçi kâr: son 7 günün işlem ort (mv) üzerinden — liste farkı sonrası">${fmtShort(net)}</span>`;
+function realProfitHTML(mv, buy, fallback) {
+  if (!(mv > 0) && fallback && fallback.mv > 0) mv = fallback.mv;
+  const net = mv * (1 - (state.salesTax + state.setupFee) / 100) - buy;
+  return mv > 0 ? `<span class="price ${net < 0 ? "profit-negative" : "profit-positive"}">${fmtShort(net)}</span>` : `<span class="muted">?</span>`;
 }
-function realMarginHTML(mv, buy) {
-  const t2 = 1 - (state.salesTax + state.setupFee) / 100;
-  if (!(mv && mv > 0)) return `<span class="muted">—</span>`;
-  const net = mv * t2 - buy;
-  const pct = (net / buy) * 100;
-  const mCls = pct >= 40 ? "margin-badge margin-high" : pct >= 15 ? "margin-badge margin-medium" : pct < 0 ? "margin-badge margin-neg" : "margin-badge margin-low";
-  return `<span class="${mCls}" title="Gerçekçi marjin: son satış ort (mv) üzerinden">${pct.toFixed(1)}%</span>`;
+function realMarginHTML(mv, buy, fallback) {
+  if (!(mv > 0) && fallback && fallback.mv > 0) mv = fallback.mv;
+  const net = mv * (1 - (state.salesTax + state.setupFee) / 100) - buy;
+  const pct = buy > 0 ? net / buy * 100 : 0;
+  const cls = pct >= 40 ? "margin-badge margin-high" : pct >= 15 ? "margin-badge margin-medium" : pct < 0 ? "margin-badge margin-neg" : "margin-badge margin-low";
+  return mv > 0 ? `<span class="${cls}">${pct.toFixed(1)}%</span>` : `<span class="muted">-</span>`;
 }
 function updateRealSlots(key) {
-  const mv = mvFresh(key);
-  document.querySelectorAll(
-    `td.real-sell[data-qtykey="${key}"], td.real-profit[data-qtykey="${key}"], td.real-margin[data-qtykey="${key}"]`
-  ).forEach(el => {
-    const buy = Number(el.dataset.buy || 0);
-    const ask = Number(el.dataset.ask || 0);
-    if (el.classList.contains("real-sell")) { el.innerHTML = realSellHTML(mv, ask, buy); return; }
-    if (el.classList.contains("real-profit")) { el.innerHTML = realProfitHTML(mv, buy); return; }
-    if (el.classList.contains("real-margin")) { el.innerHTML = realMarginHTML(mv, buy); return; }
+  const mv = mvFresh(key), parts = key.split("|");
+  const fallback = parts.length >= 3 ? generalMv(parts.slice(2).join("|"), parts[1]) : null;
+  document.querySelectorAll(`td.real-sell[data-qtykey="${key}"], td.real-profit[data-qtykey="${key}"], td.real-margin[data-qtykey="${key}"]`).forEach(el => {
+    const buy = Number(el.dataset.buy || 0), ask = Number(el.dataset.ask || 0);
+    if (el.classList.contains("real-sell")) el.innerHTML = realSellHTML(mv, ask, buy, fallback);
+    else if (el.classList.contains("real-profit")) el.innerHTML = realProfitHTML(mv, buy, fallback);
+    else el.innerHTML = realMarginHTML(mv, buy, fallback);
   });
 }
-
+function cityPriceTooltip(id, q) {
+  const lines = ["City prices (lowest sell / highest buy / 7d avg):"];
+  for (const city of CITY_LOCATIONS) {
+    const p = BO_RAW.get(id + "|" + (Number(q) || 1) + "|" + city), mv = mvFresh(qtyKey(city, q, id));
+    lines.push(city + ": min sell " + (p && p.sm > 0 ? fmtShort(p.sm) : "-") + " / max buy " + (p && p.bm > 0 ? fmtShort(p.bm) : "-") + " / 7d avg " + (mv > 0 ? fmtShort(mv) : "-"));
+  }
+  return lines.join("\n");
+}
 function renderScanTable() {
   const rows = scanState.filtered.slice(0, 400);
   $("scanCount").textContent = scanState.filtered.length > 400
@@ -1043,9 +1068,14 @@ function renderScanTable() {
     /* v28: fırsat satırlarında piyasa değeri fırsatın doğduğu şehirdedir (alış şehri) */
     const mvkey = x.tip ? qtyKey(x.buyCity, Number(x.q) || 1, x.id) : qkey;
     const qtyCol = qtyFresh(qkey) !== null ? qtyCellHTML(qtyFresh(qkey)) : `<span class="muted">…</span>`;
-    const mv0 = mvFresh(mvkey);
-    const mvT = mvTrendOf(mvkey);
-    const mvCol = mv0 !== null ? mvCellHTMLRow(mv0, x.buyPrice, x.sellPrice, mvT) : `<span class="muted">…</span>`;
+    const mvLocal = mvFresh(mvkey);
+    const fallback = mvLocal > 0 ? null : generalMv(x.id, x.q);
+    const mv0 = mvLocal > 0 ? mvLocal : (fallback && fallback.mv > 0 ? fallback.mv : null);
+    const mvT = mvLocal > 0 ? mvTrendOf(mvkey) : null;
+    const generalTitle = fallback && fallback.mv > 0 ? `title="Genel ortalama (yerel 7g veri yok). Katkı şehirleri: ${esc(fallback.cities.map(c => c.city + ": " + fmtShort(c.mv)).join(", "))}"` : `title="City 7d average"`;
+
+    const mvCol = mv0 !== null ? `${mvCellHTMLRow(mv0, x.buyPrice, x.sellPrice, mvT)}${fallback && fallback.mv > 0 ? ` <span class="muted small">(genel ort.)</span>` : ""}` : `<span class="muted">?</span>`;
+
     const bmNet = x.bm > 0 ? x.bm * (1 - state.salesTax / 100) - x.buyPrice : null;
     const bmCol = x.bm > 0
       ? `<span class="price ${bmNet > 0 ? "profit-positive" : ""}" title="Black Market alış emri${bmNet > 0 ? ` — BM'e satsan net +${fmt(bmNet)} (şu anki hedef: ${esc(x.sellCity)})` : ""}">${fmtShort(x.bm)}${bmNet > 0 && x.sellCity !== "Black Market" ? ` <span class="bm-chip">+${fmtShort(bmNet)}</span>` : ""}</span>`
@@ -1058,7 +1088,7 @@ function renderScanTable() {
       : "";
     return `
     <tr data-id="${esc(x.id)}" data-q="${Number(x.q) || 1}" data-fkey="${esc(fkeyOf(x))}" class="scan-row">
-      <td><div class="item-cell">
+      <td><div class="item-cell" title="${esc(cityPriceTooltip(x.id, x.q))}">
         <img loading="lazy" alt="" class="item-icon" src="https://render.albiononline.com/v2/item/${esc(x.id)}.png?size=32" onerror="this.style.display='none'">
         <span><span class="item-name copyname" data-copyname="${esc(shortName)}" data-copyfull="${esc(tp + ' ' + shortName)}" title="Tıkla: ismi kopyala (oyuna yapıştır) · Shift+tık: item kodu kopyalar">${tp} ${esc(shortName)}</span> ${qtyChipHTML(qkey)}<br><span class="muted small">${subTier}${qLabel}</span></span>
       </div></td>
@@ -1067,16 +1097,16 @@ function renderScanTable() {
       <td><span class="city-tag city-${esc(x.sellCity.replace(/\s/g, ""))}">${esc(x.sellCity)}</span></td>
     <td class="num price">${fmtShort(x.buyPrice)} <span class="buyqty" data-qtykey="${esc(bqkey)}">${qtyFresh(bqkey) !== null ? buyqtyHTML(qtyFresh(bqkey)) : `<span class="muted small">…</span>`}</span></td>`
     + (x.kind === "Emir → Satış emri"
-    ? `<td class="num price real-sell" data-qtykey="${esc(qkey)}" data-buy="${x.buyPrice}" data-ask="${x.ask ?? x.sellPrice}">${realSellHTML(mv0, x.ask ?? x.sellPrice, x.buyPrice)}</td>`
-    + `<td class="num real-profit" data-qtykey="${esc(qkey)}" data-buy="${x.buyPrice}" data-ask="${x.sellPrice}">${realProfitHTML(mv0, x.buyPrice)}</td>`
-    + `<td class="num real-margin" data-qtykey="${esc(qkey)}" data-buy="${x.buyPrice}" data-ask="${x.sellPrice}">${realMarginHTML(mv0, x.buyPrice)}</td>`
+    ? `<td class="num price real-sell" data-qtykey="${esc(qkey)}" data-buy="${x.buyPrice}" data-ask="${x.ask ?? x.sellPrice}">${realSellHTML(mv0, x.ask ?? x.sellPrice, x.buyPrice, fallback)}</td>`
+    + `<td class="num real-profit" data-qtykey="${esc(qkey)}" data-buy="${x.buyPrice}" data-ask="${x.sellPrice}">${realProfitHTML(mv0, x.buyPrice, fallback)}</td>`
+    + `<td class="num real-margin" data-qtykey="${esc(qkey)}" data-buy="${x.buyPrice}" data-ask="${x.sellPrice}">${realMarginHTML(mv0, x.buyPrice, fallback)}</td>`
     : `<td class="num price">${fmtShort(x.sellPrice)} <span class="net-chip ${x.net >= 0 ? "positive" : "negative"}" title="Vergi (%${state.salesTax}) düşünce eline kalan net — %${state.salesTax} · satış ${fmtShort(x.sellPrice)} × ${1 - state.salesTax / 100} − alış ${fmtShort(x.buyPrice)}">${x.net >= 0 ? "+" : "−"}${fmtShort(Math.abs(x.net))}</span></td>`
     + `<td class="num price ${x.net < 0 ? "profit-negative" : "profit-positive"}">${fmtShort(x.net)}</td>`
     + `<td class="num"><span class="${mCls}">${x.pct.toFixed(1)}%</span></td>`)
     + `<td class="num score-cell"><span class="score-b ${scoreCls}" title="Fırsat skoru: likidite × trend × marj (0-100)">${score}</span></td>`
     + `<td>${cellAge(x.sellAge || x.age)}</td>
       <td class="num qty-cell" data-qtykey="${esc(qkey)}">${qtyCol}</td>
-      <td class="num mv-cell" data-qtykey="${esc(mvkey)}" data-buy="${x.buyPrice}" data-sell="${x.sellPrice}" title="Piyasa değeri: son 7 günün işlem ortalaması (oyun içi piyasa değeri)">${mvCol}</td>
+      <td class="num mv-cell" data-qtykey="${esc(mvkey)}" data-buy="${x.buyPrice}" data-sell="${x.sellPrice}" ${generalTitle}>${mvCol}</td>
       <td class="num bm-cell">${bmCol}</td>
       <td class="row-actions"><button type="button" class="detail-btn fav-btn${isFav(x.id, x.q) ? " faved" : ""}" title="Favori ekle/çıkar — alarm eşiğini sol panelde ayarla" data-fav="${esc(x.id)}" data-fq="${Number(x.q) || 1}">★</button> <button type="button" class="detail-btn" title="Ürün detayını aç" data-id="${esc(x.id)}" data-q="${Number(x.q) || 1}">↗</button> <button type="button" class="detail-btn ledger-add" title="Deftere ekle" data-add="${esc(fkeyOf(x))}">+</button></td>
     </tr>`;}).join("");
@@ -1236,10 +1266,13 @@ async function scannerSetup() {
      çünkü tek-kalite sonucunda diğer kaliteler sorgulanmamıştır. */
   $("scanQualityAll").addEventListener("change", () => {
     if (scanState.flips.length) applyFilters();
-    if (scanState.running || scanState.flips.length) qualityRestartScan();
+    if (scanState.running) qualityRestartScan();
   });
   ["minNet", "minPct"].forEach(id => {
-    $(id).addEventListener("input", () => { if (scanState.flips.length) applyFilters(); });
+    $(id).addEventListener("input", () => {
+      try { localStorage.setItem(id === "minNet" ? "scanMinNet" : "scanMinPct", $(id).value); } catch (e) { }
+      if (scanState.flips.length) applyFilters();
+    });
   });
   /* Premium vergisi seçimi: Premium %4 / Premiumsuz %8 — tablu yeniden net kârlanir (yeniden tarama gereksiz) */
   const taxSel = $("taxMode");
@@ -1329,6 +1362,7 @@ async function scannerSetup() {
   });
   const autoCb = $("autoScan");
   if (autoCb) {
+    /* Honor an explicit saved preference; otherwise keep automatic scans off. */
     autoCb.checked = localStorage.getItem("albionAuto") === "1";
     if (autoCb.checked) setAutoTimer();
     autoCb.addEventListener("change", () => {
@@ -1391,21 +1425,7 @@ async function scannerSetup() {
     const btn = $("shareBtn");
     if (btn) { btn.dataset.share = s.url; btn.classList.remove("hidden"); }
   }).catch(() => { /* sunucu yoksa buton gizli kalir */ });
-  /* v23: İlk açılışta boş görünmesin — kayıtlı tarama sonucu yoksa 800 ms sonra otomatik tarama */
-  try {
-    setTimeout(() => {
-      try {
-        /* scannerInit'teki loadCachedScan kaydı yüklemediyse flips boş kalır;
-           localStorage'da da sonuç yoksa sayfa ilk açılışta tamamen boş demektir */
-        const cached = JSON.parse(localStorage.getItem("scanResult") || "null");
-        const hasCached = !!(cached && Array.isArray(cached.flips) && cached.flips.length &&
-          (cached.quality === "all" || (Number.isInteger(Number(cached.quality)) && Number(cached.quality) >= 1 && Number(cached.quality) <= 5)));
-        if (!hasCached && !scanState.running && scanState.flips.length === 0 && typeof startScan === "function") {
-          try { startScan(); } catch (e) { /* yoksay */ }
-        }
-      } catch (e) { /* yoksay */ }
-    }, 800);
-  } catch (e) { /* yoksay */ }
+  /* İlk açılışta tarama başlatılmaz; kullanıcı filtrelerini seçip düğmeye basar. */
   const lb = $("ledgerBody");
   if (lb) {
     lb.addEventListener("change", ev => {
@@ -1440,7 +1460,8 @@ async function scannerSetup() {
   /* v28: fırsat tipi kontrolleri — scanPrefs'ten yükle, değişince kaydet + satırları yeniden üret */
   const fmSel = $("firsatMod");
   if (fmSel) {
-    const savedMod = ["both", "cheap", "buy"].includes(FIRSAT_PREFS.mod) ? FIRSAT_PREFS.mod : "both";
+    const savedMod = ["both", "flip", "cheap", "buy"].includes(FIRSAT_PREFS.mod) ? FIRSAT_PREFS.mod : "both";
+    FIRSAT_PREFS.mod = savedMod;
     const savedEsik = Number.isFinite(Number(FIRSAT_PREFS.esik)) && Number(FIRSAT_PREFS.esik) >= 1 ? Math.min(90, Math.round(Number(FIRSAT_PREFS.esik))) : 15;
     fmSel.value = savedMod;
     scanState.firsatMod = savedMod;
@@ -2093,12 +2114,13 @@ function restoreAlerts(value) {
 }
 /* v28-b: yedekteki fırsat tipi ayarları (scanPrefs: {mod, esik}) */
 function restoreScanPrefs(value) {
-  const input = restorePlainObject(value, 4);
+  const input = restorePlainObject(value, 8);
   if (!input) return null;
-  if (input.mod !== undefined && !["both", "cheap", "buy"].includes(input.mod)) return null;
+  if (input.mod !== undefined && !["both", "flip", "cheap", "buy"].includes(input.mod)) return null;
   if (input.esik !== undefined && !restoreNumber(input.esik, 1, 90)) return null;
+  for (const key of Object.keys(input)) if (!["mod", "esik"].includes(key)) return null;
   return {
-    mod: ["both", "cheap", "buy"].includes(input.mod) ? input.mod : "both",
+    mod: ["both", "flip", "cheap", "buy"].includes(input.mod) ? input.mod : "both",
     esik: restoreNumber(input.esik, 1, 90) ? Math.round(input.esik) : 15,
   };
 }
@@ -2183,6 +2205,7 @@ function restoreAll(p) {
   }
   if (alerts !== undefined) favAlerts = alerts;
   if (scanPrefs !== undefined) {
+    FIRSAT_PREFS = { ...FIRSAT_PREFS, ...scanPrefs };
     scanState.firsatMod = scanPrefs.mod;
     scanState.firsatEsik = scanPrefs.esik;
     const fmSel = $("firsatMod"); if (fmSel) fmSel.value = scanPrefs.mod;
@@ -2351,7 +2374,7 @@ function renderBO(force) {
     const tp = tierPretty(x.id);
     return `
     <tr class="scan-row">
-      <td><div class="item-cell">
+      <td><div class="item-cell" title="${esc(cityPriceTooltip(x.id, x.q))}">
         <img loading="lazy" alt="" class="item-icon" src="https://render.albiononline.com/v2/item/${esc(x.id)}.png?size=32" onerror="this.style.display='none'">
         <span><span class="item-name copyname" data-copyname="${esc(shortName)}" data-copyfull="${esc(tp + ' ' + shortName)}" data-copyid="${esc(x.id)}" title="Tıkla: ismi kopyala · Shift+tık: item kodu">${esc(x.name)}</span></span>
       </div></td>
@@ -2366,3 +2389,4 @@ function renderBO(force) {
   }).join("");
 }
 window.renderBO = renderBO;
+
