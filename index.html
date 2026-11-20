@@ -4,9 +4,48 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Dr aLabeen — Albion Pazar Analiz</title>
-<link rel="stylesheet" href="styles.css?v=26">
+<link rel="stylesheet" href="styles.css?v=27">
 </head>
 <body>
+
+<main id="game-hub" class="game-hub">
+  <div class="hub-glow hub-glow-one"></div><div class="hub-glow hub-glow-two"></div>
+  <div class="hub-inner">
+    <div class="hub-brand"><span class="hub-mark">✦</span><span>DR ALABEEN <i>GAME SELECT</i></span></div>
+    <p class="hub-eyebrow">MACERAYA DEVAM ET</p>
+    <h1 class="hub-title">Dünyanı <span>seç.</span></h1>
+    <p class="hub-subtitle">Pazar yolculuğuna hangi diyarda devam edeceksin?</p>
+    <section class="game-cards" aria-label="Oyun seçimi">
+      <button class="game-card albion-card" type="button" data-game="albion" aria-label="Albion Online pazar analizini aç">
+        <img src="assets/albion-official.jpeg" alt="Albion Online resmî Dragonfire dünyası görseli" class="game-art">
+        <span class="card-shade"></span><span class="card-topline"><span class="live-dot"></span> PAZAR ANALİZİ <span class="card-arrow">↗</span></span>
+        <span class="card-copy"><span class="game-kicker">SANDBOX MMORPG</span><strong>ALBION<br>ONLINE</strong><span class="card-description">Fırsatları keşfet. Pazarın nabzını tut.</span><span class="card-cta">DÜNYAYA GİR <b>→</b></span></span>
+      </button>
+      <button class="game-card knight-card" type="button" data-game="knight" aria-label="Knight Online arayüzünü aç">
+        <img src="assets/knight-official.jpg" alt="Knight Online resmî NTTGame duvar kâğıdı" class="game-art">
+        <span class="card-shade"></span><span class="card-topline"><span class="soon-dot"></span> YAKINDA <span class="card-arrow">↗</span></span>
+        <span class="card-copy"><span class="game-kicker">NOSTALJİK MMORPG</span><strong>KNIGHT<br>ONLINE</strong><span class="card-description">Savaş alanı hazır. Pazar araçları yolda.</span><span class="card-cta">KEŞFET <b>→</b></span></span>
+      </button>
+    </section>
+    <p class="hub-footnote"><span>✧</span> İki efsane dünya, tek merkez. <span class="hub-foot-right">SEÇİMİNİZİ YAPIN</span></p>
+  </div>
+</main>
+<section id="knight-view" class="knight-view" hidden>
+  <div class="knight-view-art"></div>
+  <div class="knight-view-content">
+    <button type="button" class="hub-back" data-game="home">← OYUN SEÇİMİ</button>
+    <div class="knight-emblem">⚔</div>
+    <p class="hub-eyebrow">KNIGHT ONLINE · PAZAR MERKEZİ</p>
+    <h1 class="knight-title">Yakında <span>savaşta.</span></h1>
+    <p class="knight-lead">Knight Online pazar araçları hazırlanıyor.</p>
+    <div class="knight-status"><span class="status-pulse"></span><div><strong>Veri erişimi onay bekliyor</strong><p>API erişim başvurusu sonuçlandığında canlı pazar verileri burada etkinleştirilecek.</p></div></div>
+    <label class="knight-search-label" for="knight-search">PAZARDA ARA</label>
+    <div class="knight-search"><input id="knight-search" type="search" placeholder="Eşya adı yaz…" autocomplete="off"><button type="button" id="knight-search-btn" aria-label="Ara">⌕</button></div>
+    <p class="knight-search-note" id="knight-search-note">Arama arayüzü önizlemedir; henüz canlı veri kaynağına bağlı değildir.</p>
+    <div class="knight-pending">✦ <span>CANLI İLANLAR VE FİYATLAR ERİŞİM ONAYINDAN SONRA</span></div>
+  </div>
+</section>
+<div id="dashboard-shell" hidden>
 
 <header class="header">
   <div class="brand">
@@ -412,6 +451,7 @@
   Dr aLabeen — Albion Online pazar analiz &amp; kırmız tarayıcı. Veriler topluluk tarafından yüklenir (AODP istemcisi oyun açıkken çalışmalıdır). Sandbox Interactive ile bağlantımız yoktur.
   <span id="apiError" class="error-text"></span>
 </footer>
+</div>
 
 <script src="data/scan-list.js?v=4"></script>
 <!-- Cache-buster değerleri dosya sürümleriyle eşleşir: app.js v15, scanner.js v31. -->
@@ -419,6 +459,27 @@
 <script src="scanner.js?v=31"></script>
 <script>
   if (typeof scannerSetup === "function") scannerSetup();
+  (() => {
+    const hub = document.getElementById('game-hub');
+    const knight = document.getElementById('knight-view');
+    const dashboard = document.getElementById('dashboard-shell');
+    const show = (view) => {
+      hub.hidden = view !== 'home';
+      knight.hidden = view !== 'knight';
+      dashboard.hidden = view !== 'albion';
+      document.body.classList.toggle('game-hub-active', view !== 'albion');
+      window.scrollTo(0, 0);
+    };
+    document.querySelectorAll('[data-game="albion"]').forEach(el => el.addEventListener('click', () => show('albion')));
+    document.querySelectorAll('[data-game="knight"]').forEach(el => el.addEventListener('click', () => show('knight')));
+    document.querySelectorAll('[data-game="home"]').forEach(el => el.addEventListener('click', () => show('home')));
+    const search = document.getElementById('knight-search');
+    const searchNote = document.getElementById('knight-search-note');
+    const searchInfo = () => { searchNote.textContent = search.value.trim() ? `“${search.value.trim()}” için arama arayüzü hazır; canlı veri erişim onayı bekleniyor.` : 'Arama arayüzü önizlemedir; henüz canlı veri kaynağına bağlı değildir.'; };
+    search.addEventListener('input', searchInfo);
+    document.getElementById('knight-search-btn').addEventListener('click', searchInfo);
+    search.addEventListener('keydown', e => { if (e.key === 'Enter') searchInfo(); });
+  })();
 </script>
 </body>
 </html>

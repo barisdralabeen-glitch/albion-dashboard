@@ -36,6 +36,7 @@ Arkadaşlarla paylaşım için kalıcı GitHub Pages bağlantısını kullan. Ye
 - **Flip satış verisi:** Normal Flip satırları, hedef şehirde taze 7 günlük satış ortalaması yoksa gizlenir; geçmiş henüz yüklenirken veya API hatası olduğunda satırlar korunur ve filtreler veri geldikçe yeniden uygulanır. UCUZ/BUY mantığı değişmez.
 - **Hesap, Defter ve Emir** sekmeleri; favoriler, alarmlar, profiller ve yedekleme.
 - **Fırsat tipi:** Flip (yalnızca normal flip satırları), UCUZ liste (piyasa değerinin belirgin altında listelenmiş itemler) ve BUY pazarı (ortalama satış değerinin belirgin altında listelenmiş item bulur; satış güncel buy emrine anlık ya da ort. değerde satış emriyle olur) satırları; `Flip` yalnızca normal flipleri, `both` tüm tipleri gösterir; eşiği ve tipi panelden seç, tabloda rozet ve CSV'de `tip,indirim_pct` sütunu ile görünür.
+- **Oyun seçimi:** Ana ekranda Albion Online ve Knight Online için doğru oyuna ait resmî duvar kâğıtları kullanılır; Knight Online kartı NTTGame, Albion kartı Albion Online görsel kaynağındandır.
 
 ## Güncel dosya sürümleri
 
@@ -46,7 +47,7 @@ Sürüm numaraları `index.html` içindeki cache-buster değerleriyle eşleşir:
 | `app.js` | `?v=15` | Ürün detayları, API ve grafikler |
 | `scanner.js` | `?v=31` | Tarama, filtreler ve fırsat analizi |
 | `data/scan-list.js` | `?v=4` | Tarayıcının ürün listesi |
-| `styles.css` | `?v=26` | Arayüz stilleri |
+| `styles.css` | `?v=27` | Arayüz stilleri |
 
 > `scanner.js` içindeki kaynak yorumları özellik değişikliklerini belirtir; tarayıcının yüklediği sürüm ve cache-buster `index.html` içindeki `?v=31` değeridir.
 
