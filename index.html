@@ -23,26 +23,102 @@
       </button>
       <button class="game-card knight-card" type="button" data-game="knight" aria-label="Knight Online arayüzünü aç">
         <img src="assets/knight-official.jpg" alt="Knight Online resmî NTTGame duvar kâğıdı" class="game-art">
-        <span class="card-shade"></span><span class="card-topline"><span class="soon-dot"></span> YAKINDA <span class="card-arrow">↗</span></span>
-        <span class="card-copy"><span class="game-kicker">NOSTALJİK MMORPG</span><strong>KNIGHT<br>ONLINE</strong><span class="card-description">Savaş alanı hazır. Pazar araçları yolda.</span><span class="card-cta">KEŞFET <b>→</b></span></span>
+        <span class="card-shade"></span><span class="card-topline"><span class="live-dot"></span> PAZAR ANALİZİ <span class="card-arrow">↗</span></span>
+        <span class="card-copy"><span class="game-kicker">NOSTALJİK MMORPG</span><strong>KNIGHT<br>ONLINE</strong><span class="card-description">GB fiyatları ve canlı item pazarı.</span><span class="card-cta">DÜNYAYA GİR <b>→</b></span></span>
       </button>
     </section>
     <p class="hub-footnote"><span>✧</span> İki efsane dünya, tek merkez. <span class="hub-foot-right">SEÇİMİNİZİ YAPIN</span></p>
   </div>
 </main>
-<section id="knight-view" class="knight-view" hidden>
-  <div class="knight-view-art"></div>
-  <div class="knight-view-content">
-    <button type="button" class="hub-back" data-game="home">← OYUN SEÇİMİ</button>
-    <div class="knight-emblem">⚔</div>
-    <p class="hub-eyebrow">KNIGHT ONLINE · PAZAR MERKEZİ</p>
-    <h1 class="knight-title">Yakında <span>savaşta.</span></h1>
-    <p class="knight-lead">Knight Online pazar araçları hazırlanıyor.</p>
-    <div class="knight-status"><span class="status-pulse"></span><div><strong>Veri erişimi onay bekliyor</strong><p>API erişim başvurusu sonuçlandığında canlı pazar verileri burada etkinleştirilecek.</p></div></div>
-    <label class="knight-search-label" for="knight-search">PAZARDA ARA</label>
-    <div class="knight-search"><input id="knight-search" type="search" placeholder="Eşya adı yaz…" autocomplete="off"><button type="button" id="knight-search-btn" aria-label="Ara">⌕</button></div>
-    <p class="knight-search-note" id="knight-search-note">Arama arayüzü önizlemedir; henüz canlı veri kaynağına bağlı değildir.</p>
-    <div class="knight-pending">✦ <span>CANLI İLANLAR VE FİYATLAR ERİŞİM ONAYINDAN SONRA</span></div>
+<section id="knight-shell" class="knight-shell" hidden>
+  <header class="header knight-header">
+    <div class="brand">
+      <span class="brand-mark">⚔</span>
+      <div>
+        <h1>Dr aLabeen</h1>
+        <span class="muted small">Knight Online · Pazar &amp; GB fiyatları · veri: EnUcuzGB</span>
+      </div>
+    </div>
+    <div class="header-right">
+      <button id="knightSettingsBtn" class="btn ghost" type="button" title="API / proxy ayarları">⚙ Ayarlar</button>
+      <span id="knightDataStatus" class="status-badge muted">Hazır</span>
+      <button class="hub-back" type="button" data-game="home">← OYUN SEÇİMİ</button>
+    </div>
+  </header>
+
+  <div class="knight-tabs" role="tablist">
+    <button class="knight-tab active" type="button" data-ktab="gb">GB Fiyatları</button>
+    <button class="knight-tab" type="button" data-ktab="market">Item Pazarı</button>
+  </div>
+
+  <!-- GB PRICES TAB -->
+  <section id="ktab-gb" class="knight-tabpane">
+    <div class="knight-toolbar">
+      <label class="field">Sunucu
+        <select id="knightGbServer"><option value="">Tümü</option></select></label>
+      <button id="knightGbRefresh" class="btn primary" type="button">🔄 Yenile</button>
+      <span id="knightGbInfo" class="muted small"></span>
+      <span id="knightGbUpdated" class="muted small"></span>
+    </div>
+    <div class="results-table-wrapper">
+      <table id="knightGbTable">
+        <thead><tr>
+          <th>Sunucu</th><th>Kaynak</th>
+          <th class="num">Alış (en yüksek)</th>
+          <th class="num">Satış (en düşük)</th>
+          <th>Durum</th>
+          <th>Son güncelleme</th>
+        </tr></thead>
+        <tbody id="knightGbBody"><tr><td colspan="6" class="muted">Yenile düğmesine bas.</td></tr></tbody>
+      </table>
+    </div>
+    <p class="muted small" style="margin-top:8px">Veri: EnUcuzGB Fiyat Geçmişi API v1 (<code>/prices/current</code>). Fiyatlar TRY / 1 GB (100M) birimidir. Kaynak durumu pasifse o sitede stok yoktur.</p>
+  </section>
+
+  <!-- ITEM MARKET TAB -->
+  <section id="ktab-market" class="knight-tabpane hidden">
+    <div class="knight-toolbar">
+      <label class="field" style="flex:1">Eşya adı
+        <input id="knightItemSearch" type="search" placeholder="örn. Ring of Courage, +7 quest fs…" autocomplete="off"></label>
+      <button id="knightItemSearchBtn" class="btn primary" type="button">Ara</button>
+      <label class="field">Tür
+        <select id="knightMarketType">
+          <option value="sell" selected>Satış (sell)</option>
+          <option value="buy">Alış (buy)</option>
+        </select></label>
+      <label class="field">Sunucu
+        <select id="knightMarketServer"><option value="">Tümü (anahtar kapsamı)</option></select></label>
+    </div>
+    <div id="knightItemResults" class="muted small" style="margin:6px 0"></div>
+    <div class="results-table-wrapper">
+      <table id="knightMarketTable">
+        <thead><tr>
+          <th>Eşya</th><th>Sunucu</th><th>Satıcı</th>
+          <th class="num">Fiyat</th>
+          <th>Koordinat</th>
+          <th>Zaman</th>
+        </tr></thead>
+        <tbody id="knightMarketBody"><tr><td colspan="6" class="muted">Eşya adı yazıp Ara'ya bas.</td></tr></tbody>
+      </table>
+    </div>
+    <p class="muted small" style="margin-top:8px">Veri: EnUcuzGB Canlı Pazar API v2. Önce <code>/items</code> ile item kimliği bulunur, sonra <code>/market/live</code> ile ilanlar çekilir. v2 erişimi ayrı onay gerektirir.</p>
+  </section>
+
+  <!-- SETTINGS MODAL -->
+  <div id="knightSettingsModal" class="knight-modal hidden">
+    <div class="knight-modal-card">
+      <h3>EnUcuzGB bağlantı ayarları</h3>
+      <p class="muted small">Anahtarınızı asla herkese açık depoya koymayın. Proxy (Cloudflare Worker) kullanıyorsanız anahtar worker'da kalır; burada sadece proxy URL girin.</p>
+      <label class="field">Proxy URL (opsiyonel)
+        <input id="knightProxyUrl" type="url" placeholder="https://enucuzgb-proxy.xxx.workers.dev"></label>
+      <label class="field">API anahtarı (proxy yoksa doğrudan kullanım)
+        <input id="knightApiKey" type="password" placeholder="enucuzgb API key"></label>
+      <div class="control-row" style="margin-top:10px">
+        <button id="knightSettingsSave" class="btn primary" type="button">Kaydet</button>
+        <button id="knightSettingsClose" class="btn ghost" type="button">Kapat</button>
+      </div>
+      <p class="muted small" style="margin-top:10px">Proxy kurulumu için proje kökündeki <code>worker/</code> klasörüne bakın (Cloudflare Worker). Anahtar almak için enucuzgb.com → Profil → API Erişim Talebi.</p>
+    </div>
   </div>
 </section>
 <div id="dashboard-shell" hidden>
@@ -454,14 +530,16 @@
 </div>
 
 <script src="data/scan-list.js?v=4"></script>
-<!-- Cache-buster değerleri dosya sürümleriyle eşleşir: app.js v15, scanner.js v31. -->
+<!-- Cache-buster değerleri dosya sürümleriyle eşleşir: app.js v15, scanner.js v31, knight.js v1. -->
 <script src="app.js?v=15"></script>
 <script src="scanner.js?v=31"></script>
+<script src="knight.js?v=1"></script>
 <script>
   if (typeof scannerSetup === "function") scannerSetup();
+  if (typeof knightSetup === "function") knightSetup();
   (() => {
     const hub = document.getElementById('game-hub');
-    const knight = document.getElementById('knight-view');
+    const knight = document.getElementById('knight-shell');
     const dashboard = document.getElementById('dashboard-shell');
     const show = (view) => {
       hub.hidden = view !== 'home';
@@ -473,12 +551,6 @@
     document.querySelectorAll('[data-game="albion"]').forEach(el => el.addEventListener('click', () => show('albion')));
     document.querySelectorAll('[data-game="knight"]').forEach(el => el.addEventListener('click', () => show('knight')));
     document.querySelectorAll('[data-game="home"]').forEach(el => el.addEventListener('click', () => show('home')));
-    const search = document.getElementById('knight-search');
-    const searchNote = document.getElementById('knight-search-note');
-    const searchInfo = () => { searchNote.textContent = search.value.trim() ? `“${search.value.trim()}” için arama arayüzü hazır; canlı veri erişim onayı bekleniyor.` : 'Arama arayüzü önizlemedir; henüz canlı veri kaynağına bağlı değildir.'; };
-    search.addEventListener('input', searchInfo);
-    document.getElementById('knight-search-btn').addEventListener('click', searchInfo);
-    search.addEventListener('keydown', e => { if (e.key === 'Enter') searchInfo(); });
   })();
 </script>
 </body>
