@@ -43,8 +43,6 @@
 
   async function apiFetch(path, params) {
     const base = effectiveBase();
-    const url = new URL(path.replace(/^\//, ""), base + "/");
-    // Build full URL manually to support both absolute path forms
     const full = base + (path.startsWith("/") ? path : "/" + path);
     const u = new URL(full);
     if (params) Object.keys(params).forEach(k => {
